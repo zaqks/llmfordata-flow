@@ -1,0 +1,22 @@
+ RAPPORT ARXIV 
+
+Titre : MemFlow: Flowing Adaptive Memory for Consistent and Efficient Long Video Narratives
+Date : 2025-12-16 18:59:59+00:00
+Lien PDF : https://arxiv.org/pdf/2512.14699v1
+--------------------------------------------------
+Titre : Spherical Leech Quantization for Visual Tokenization and Generation
+Date : 2025-12-16 18:59:57+00:00
+Lien PDF : https://arxiv.org/pdf/2512.14697v1
+--------------------------------------------------
+Titre : CRISP: Contact-Guided Real2Sim from Monocular Video with Planar Scene Primitives
+Date : 2025-12-16 18:59:50+00:00
+Lien PDF : https://arxiv.org/pdf/2512.14696v1
+--------------------------------------------------
+Titre : Native and Compact Structured Latents for 3D Generation
+Date : 2025-12-16 18:58:28+00:00
+Lien PDF : https://arxiv.org/pdf/2512.14692v1
+--------------------------------------------------
+Titre : MMGR: Multi-Modal Generative Reasoning
+Date : 2025-12-16 18:58:04+00:00
+Lien PDF : https://arxiv.org/pdf/2512.14691v1
+--------------------------------------------------

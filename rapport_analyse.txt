@@ -1,0 +1,12 @@
+=== RAPPORT DE TENDANCES ===
+
+Transformer : 6
+Lakehouse : 4
+RAG : 2
+Generative : 1
+LLM : 0
+ETL : 0
+Data Quality : 0
+AutoML : 0
+Pipeline : 0
+Governance : 0

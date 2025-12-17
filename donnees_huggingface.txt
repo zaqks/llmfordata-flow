@@ -1,0 +1,42 @@
+=== TOP MODÈLES HUGGING FACE (PAR TÉLÉCHARGEMENTS) ===
+
+Modèle : sentence-transformers/all-MiniLM-L6-v2
+Stats  : 148248971 téléchargements | 4235 likes
+Lien   : https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2
+--------------------------------------------------
+Modèle : Falconsai/nsfw_image_detection
+Stats  : 92009762 téléchargements | 922 likes
+Lien   : https://huggingface.co/Falconsai/nsfw_image_detection
+--------------------------------------------------
+Modèle : google/electra-base-discriminator
+Stats  : 62643323 téléchargements | 71 likes
+Lien   : https://huggingface.co/google/electra-base-discriminator
+--------------------------------------------------
+Modèle : google-bert/bert-base-uncased
+Stats  : 57221973 téléchargements | 2518 likes
+Lien   : https://huggingface.co/google-bert/bert-base-uncased
+--------------------------------------------------
+Modèle : dima806/fairface_age_image_detection
+Stats  : 54747797 téléchargements | 54 likes
+Lien   : https://huggingface.co/dima806/fairface_age_image_detection
+--------------------------------------------------
+Modèle : sentence-transformers/all-mpnet-base-v2
+Stats  : 25002937 téléchargements | 1207 likes
+Lien   : https://huggingface.co/sentence-transformers/all-mpnet-base-v2
+--------------------------------------------------
+Modèle : timm/mobilenetv3_small_100.lamb_in1k
+Stats  : 22512664 téléchargements | 42 likes
+Lien   : https://huggingface.co/timm/mobilenetv3_small_100.lamb_in1k
+--------------------------------------------------
+Modèle : sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+Stats  : 20671626 téléchargements | 1077 likes
+Lien   : https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+--------------------------------------------------
+Modèle : openai/clip-vit-base-patch32
+Stats  : 18010783 téléchargements | 826 likes
+Lien   : https://huggingface.co/openai/clip-vit-base-patch32
+--------------------------------------------------
+Modèle : pyannote/segmentation-3.0
+Stats  : 17621923 téléchargements | 695 likes
+Lien   : https://huggingface.co/pyannote/segmentation-3.0
+--------------------------------------------------

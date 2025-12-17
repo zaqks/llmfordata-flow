@@ -1,0 +1,42 @@
+=== BLOG DATABRICKS (VIA RSS) ===
+
+Titre : SQL on the Databricks Lakehouse in 2025
+Date  : Wed, 17 Dec 2025 16:21:02 GMT
+Lien  : https://www.databricks.com/blog/sql-databricks-lakehouse-2025
+--------------------------------------------------
+Titre : Announcing the winners of the inaugural Databricks Free Edition Hackathon
+Date  : Tue, 16 Dec 2025 20:00:00 GMT
+Lien  : https://www.databricks.com/blog/announcing-winners-inaugural-databricks-free-edition-hackathon
+--------------------------------------------------
+Titre : Databricks Lakehouse Data Modeling: Myths, Truths, and Best Practices
+Date  : Mon, 15 Dec 2025 17:16:51 GMT
+Lien  : https://www.databricks.com/blog/databricks-lakehouse-data-modeling-myths-truths-and-best-practices
+--------------------------------------------------
+Titre : OpenAI GPT-5.2 and Responses API on Databricks: Build Trusted, Data-Aware Agentic Systems
+Date  : Thu, 11 Dec 2025 18:00:25 GMT
+Lien  : https://www.databricks.com/blog/openai-gpt-52-and-responses-api-databricks-build-trusted-data-aware-agentic-systems
+--------------------------------------------------
+Titre : Introducing Databricks GenAI Partner Accelerators for Data Engineering & Migration
+Date  : Tue, 09 Dec 2025 22:00:00 GMT
+Lien  : https://www.databricks.com/blog/introducing-databricks-genai-partner-accelerators-data-engineering-migration
+--------------------------------------------------
+Titre : Introducing OfficeQA: A Benchmark for End-to-End Grounded Reasoning
+Date  : Tue, 09 Dec 2025 15:30:00 GMT
+Lien  : https://www.databricks.com/blog/introducing-officeqa-benchmark-end-to-end-grounded-reasoning
+--------------------------------------------------
+Titre : Powering Growth: How Data and AI Are Rewiring Productivity in Banking and Payments
+Date  : Tue, 09 Dec 2025 00:15:00 GMT
+Lien  : https://www.databricks.com/blog/powering-growth-how-data-and-ai-are-rewiring-productivity-banking-and-payments
+--------------------------------------------------
+Titre : Expensive Delta Lake S3 Storage Mistakes (And How to Fix Them)
+Date  : Fri, 05 Dec 2025 20:40:00 GMT
+Lien  : https://www.databricks.com/blog/expensive-delta-lake-s3-storage-mistakes-and-how-fix-them
+--------------------------------------------------
+Titre : Databricks Wins Seven 2025 AWS Partner of the Year Awards
+Date  : Fri, 05 Dec 2025 01:10:00 GMT
+Lien  : https://www.databricks.com/blog/databricks-wins-seven-2025-aws-partner-year-awards
+--------------------------------------------------
+Titre : BP’s Geospatial AI Engine: Transforming Safety and Operations with Databricks
+Date  : Thu, 04 Dec 2025 23:05:00 GMT
+Lien  : https://www.databricks.com/blog/bps-geospatial-ai-engine-transforming-safety-and-operations-databricks
+--------------------------------------------------
