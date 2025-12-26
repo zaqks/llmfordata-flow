@@ -13,7 +13,7 @@ services:
     ports:
       - 5432:5432
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -33,9 +33,9 @@ services:
     volumes:
       - ./services/api/requirements.txt:/app/requirements.txt
       - ./services/api/dj:/app/dj
-      - ./services/api/airflow/dags:/app/airflow/dags
-      # - ./services/api/airflow:/app/airflow
-
+      - ./services/api/airflow:/app/airflow
+      # - ./services/api/airflow/dags:/app/airflow/dags
+      # - ./services/api/airflow/airflow.cfg:/app/airflow/airflow.cfg
     # command: [ "./run.sh" ]
 
 volumes:
