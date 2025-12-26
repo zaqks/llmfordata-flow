@@ -27,16 +27,25 @@ services:
         condition: service_healthy
     ports:
       - 8000:8000
+    env_file:
+      - .env
+    volumes:
+      - ./services/api:/app
+
+
+  airflow:
+    build:
+      context: ./services/airflow
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
       - 8080:8080
     env_file:
       - .env
     volumes:
-      - ./services/api/requirements.txt:/app/requirements.txt
-      - ./services/api/dj:/app/dj
-      - ./services/api/airflow:/app/airflow
-      # - ./services/api/airflow/dags:/app/airflow/dags
-      # - ./services/api/airflow/airflow.cfg:/app/airflow/airflow.cfg
-    # command: [ "./run.sh" ]
+      - ./services/airflow/dags:/app/dags
 
 volumes:
   postgres_data:
