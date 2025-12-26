@@ -32,7 +32,8 @@ services:
     env_file:
       - .env
     volumes:
-      - ./services/api:/app
+      - ./services/api/dj:/app/dj
+      - ./services/api/airflow/dags:/app/airflow/dags
     # command: [ "./run.sh" ]
 
 volumes:

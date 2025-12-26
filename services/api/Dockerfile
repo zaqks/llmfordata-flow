@@ -2,14 +2,13 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Copy only requirements first to leverage Docker layer caching
+# Copy requirements first
 COPY requirements.txt ./
 
-# Install Python dependencies
+# Create venv and install dependencies there
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Remaining build steps to be completed by the user
-
+# Copy app code
 COPY . .
 
 RUN chmod +x run.sh
