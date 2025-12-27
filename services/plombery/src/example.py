@@ -43,14 +43,14 @@ async def fetch_raw_sales_data():
 register_pipeline(
     id="sales_pipeline",
     description="Aggregate sales activity from all stores across the country",
-    tasks = [fetch_raw_sales_data],
-    triggers = [
+    tasks=[fetch_raw_sales_data],
+    triggers=[
         Trigger(
             id="daily",
             name="Daily",
             description="Run the pipeline every day",
             schedule=IntervalTrigger(days=1),
-            params=InputParams(some_value=2),
         ),
     ],
+    params=InputParams,
 )
