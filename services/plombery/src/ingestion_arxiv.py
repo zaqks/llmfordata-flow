@@ -2,42 +2,74 @@ import feedparser
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
 from ._tools import insert_datasource
-
-N_DAYS = 7
-
-BASE_URL = "http://export.arxiv.org/api/query?"
-
-KEYWORDS = [
-    "data pipeline", "ETL", "data lake", "warehouse",
-    "LLM", "agent", "retrieval", "RAG"
-]
-
-CATEGORIES = ["cs.AI", "cs.LG", "cs.DB", "stat.ML"]
+from typing import List
+from pydantic import BaseModel, Field
 
 from apscheduler.triggers.interval import IntervalTrigger
 from plombery import task, get_logger, Trigger, register_pipeline
+from pydantic import BaseModel, Field, validator
 
 
-def build_query():
-    kw = " OR ".join(f'all:"{k}"' for k in KEYWORDS)
-    cat = " OR ".join(f"cat:{c}" for c in CATEGORIES)
+class InputParams(BaseModel):
+    n_days: int = Field(7, alias="N_DAYS")
+    base_url: str = Field("http://export.arxiv.org/api/query?", alias="BASE_URL")
+    keywords: List[str] = Field(
+        [
+            "data pipeline",
+            "ETL",
+            "data lake",
+            "warehouse",
+            "LLM",
+            "agent",
+            "retrieval",
+            "RAG",
+        ],
+        alias="KEYWORDS",
+    )
+    categories: List[str] = Field(
+        ["cs.AI", "cs.LG", "cs.DB", "stat.ML"], alias="CATEGORIES"
+    )
+    max_results: int = Field(200, alias="MAX_RESULTS")
+
+    @validator('keywords', pre=True)
+    def parse_keywords(cls, v):
+        if isinstance(v, str):
+            return [item.strip() for item in v.split(',')]
+        return v
+
+    @validator('categories', pre=True)
+    def parse_categories(cls, v):
+        if isinstance(v, str):
+            return [item.strip() for item in v.split(',')]
+        return v
+
+    class Config:
+        allow_population_by_field_name = True
+
+
+def _build_query(keywords: list[str], categories: list[str]) -> str:
+    kw = " OR ".join(f'all:"{k}"' for k in keywords)
+    cat = " OR ".join(f"cat:{c}" for c in categories)
     return f"({kw}) AND ({cat})"
 
 
 @task
-async def main():
+async def main(params: InputParams | None = None):
+    if params is None:
+        params = InputParams()
+
     logger = get_logger()
-    since = datetime.utcnow() - timedelta(days=N_DAYS)
+    since = datetime.utcnow() - timedelta(days=params.n_days)
 
     query = {
-        "search_query": build_query(),
+        "search_query": _build_query(params.keywords, params.categories),
         "start": 0,
-        "max_results": 200,
+        "max_results": params.max_results,
         "sortBy": "submittedDate",
         "sortOrder": "descending",
     }
 
-    feed = feedparser.parse(BASE_URL + urlencode(query))
+    feed = feedparser.parse(params.base_url + urlencode(query))
 
     extracted = 0
     added = 0
@@ -84,6 +116,7 @@ register_pipeline(
             schedule=IntervalTrigger(hours=1),
         ),
     ],
+    params=InputParams,
 )
 
 

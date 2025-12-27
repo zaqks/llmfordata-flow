@@ -2,22 +2,42 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 from ._tools import insert_datasource
+from typing import Dict
+from pydantic import BaseModel, Field, validator
+import json
 
 from apscheduler.triggers.interval import IntervalTrigger
 from plombery import task, get_logger, Trigger, register_pipeline
 
-URLS = {
-    "vldb": "https://www.vldb.org/pvldb/volumes/",
-    "sigmod": "https://sigmod.org/sigmod-2024-program/",
-}
+
+class InputParams(BaseModel):
+    urls: Dict[str, str] = Field(
+        json.dumps({
+            "vldb": "https://www.vldb.org/pvldb/volumes/",
+            "sigmod": "https://sigmod.org/sigmod-2024-program/",
+        }),
+        alias="URLS",
+    )
+
+    @validator('urls', pre=True)
+    def parse_urls(cls, v):
+        if isinstance(v, str):
+            return json.loads(v)
+        return v
+
+    class Config:
+        allow_population_by_field_name = True
 
 
 @task
-async def main():
+async def main(params: InputParams | None = None):
+    if params is None:
+        params = InputParams()
+
     logger = get_logger()
     extracted = 0
     added = 0
-    for source, url in URLS.items():
+    for source, url in params.urls.items():
         html = requests.get(url).text
         soup = BeautifulSoup(html, "html.parser")
 
@@ -67,6 +87,7 @@ register_pipeline(
             schedule=IntervalTrigger(hours=1),
         ),
     ],
+    params=InputParams,
 )
 
 
