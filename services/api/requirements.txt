@@ -2,3 +2,4 @@ django
 django-ninja
 uvicorn
 psycopg2-binary
+dj_database_url
