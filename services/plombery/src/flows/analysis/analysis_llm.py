@@ -5,12 +5,27 @@ from plombery import task, get_logger, Trigger, register_pipeline
 from ...utils._db import SessionLocal, Datasource
 from ...utils._tools import insert_datasource_analysis, exists_analysis_by_datasource_id
 from ...utils._ai import ask_llm
+import os
+from pydantic import BaseModel, Field
+
+
 
 PROMPT_PATH = "src/prompt.txt"
 
 def load_prompt():
     with open(PROMPT_PATH, "r") as f:
         return f.read()
+
+
+class InputParams(BaseModel):
+    ai_model: str = Field(os.getenv("OPENROUTER_MODEL", ""), alias="AI_MODEL")
+    prompt: str = Field(
+        load_prompt(),
+        alias="PROMPT",
+        description="Prompt template for the LLM."
+    )
+
+
 
 @task
 async def main():
@@ -84,5 +99,5 @@ register_pipeline(
         #     schedule=ManualTrigger(),
         # ),
     ],
-    params=None,
+    params=InputParams,
 )
