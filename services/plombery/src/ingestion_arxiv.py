@@ -52,6 +52,8 @@ def _build_query(keywords: list[str], categories: list[str]) -> str:
     cat = " OR ".join(f"cat:{c}" for c in categories)
     return f"({kw}) AND ({cat})"
 
+ 
+
 
 @task
 async def main(params: InputParams | None = None):

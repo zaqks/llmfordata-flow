@@ -12,14 +12,16 @@ from plombery import task, get_logger, Trigger, register_pipeline
 
 class InputParams(BaseModel):
     urls: Dict[str, str] = Field(
-        json.dumps({
-            "vldb": "https://www.vldb.org/pvldb/volumes/",
-            "sigmod": "https://sigmod.org/sigmod-2024-program/",
-        }),
+        json.dumps(
+            {
+                "vldb": "https://www.vldb.org/pvldb/volumes/",
+                "sigmod": "https://sigmod.org/sigmod-2024-program/",
+            }
+        ),
         alias="URLS",
     )
 
-    @validator('urls', pre=True)
+    @validator("urls", pre=True)
     def parse_urls(cls, v):
         if isinstance(v, str):
             return json.loads(v)
