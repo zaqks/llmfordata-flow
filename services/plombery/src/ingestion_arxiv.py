@@ -1,10 +1,9 @@
 import feedparser
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
-from _tools import insert_datasource
+from ._tools import insert_datasource
 
 N_DAYS = 7
-OUTPUT = "arxiv.csv"
 
 BASE_URL = "http://export.arxiv.org/api/query?"
 
@@ -15,12 +14,19 @@ KEYWORDS = [
 
 CATEGORIES = ["cs.AI", "cs.LG", "cs.DB", "stat.ML"]
 
+from apscheduler.triggers.interval import IntervalTrigger
+from plombery import task, get_logger, Trigger, register_pipeline
+
+
 def build_query():
     kw = " OR ".join(f'all:"{k}"' for k in KEYWORDS)
     cat = " OR ".join(f"cat:{c}" for c in CATEGORIES)
     return f"({kw}) AND ({cat})"
 
-def main():
+
+@task
+async def main():
+    logger = get_logger()
     since = datetime.utcnow() - timedelta(days=N_DAYS)
 
     query = {
@@ -28,12 +34,13 @@ def main():
         "start": 0,
         "max_results": 200,
         "sortBy": "submittedDate",
-        "sortOrder": "descending"
+        "sortOrder": "descending",
     }
 
     feed = feedparser.parse(BASE_URL + urlencode(query))
 
     extracted = 0
+    added = 0
     for e in feed.entries:
         published = datetime.strptime(e.published, "%Y-%m-%dT%H:%M:%SZ")
         if published < since:
@@ -51,13 +58,36 @@ def main():
         }
 
         try:
-            insert_datasource(data)
+            inserted = insert_datasource(data)
         except Exception:
             # ignore insert errors and continue
-            pass
-        extracted += 1
+            inserted = False
 
-    print(f"Extracted {extracted} rows")
+        extracted += 1
+        if inserted:
+            added += 1
+
+    logger.info("Extracted %s rows from arXiv", extracted)
+    logger.info("Inserted %s new rows into DB", added)
+    return {"extracted": extracted, "inserted": added}
+
+
+register_pipeline(
+    id="arxiv_ingestion",
+    description="Ingest recent arXiv papers matching keywords",
+    tasks=[main],
+    triggers=[
+        Trigger(
+            id="hourly",
+            name="Hourly",
+            description="Run the pipeline every hour",
+            schedule=IntervalTrigger(hours=1),
+        ),
+    ],
+)
+
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+
+    asyncio.run(main())

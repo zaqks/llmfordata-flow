@@ -1,4 +1,4 @@
-from _db import SessionLocal, Datasource
+from ._db import SessionLocal, Datasource
 from sqlalchemy.exc import IntegrityError
 
 

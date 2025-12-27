@@ -1,4 +1,6 @@
-from src.example import *
+# from src.example import *
+from src.ingestion_arxiv import *
+from src.ingestion_vldb_sigmod import *
 import uvicorn
 
 
