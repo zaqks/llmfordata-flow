@@ -13,20 +13,22 @@ def load_prompt():
 
 @task
 async def main():
+    import asyncio
     logger = get_logger()
     session = SessionLocal()
     prompt_template = Template(load_prompt())
+    datasources = []
     try:
-        datasources = (
-            session.query(Datasource).filter(Datasource.analyzed == False).all()
-        )
+        # Run the DB query in a thread
+        datasources = await asyncio.to_thread(lambda: session.query(Datasource).filter(Datasource.analyzed == False).all())
         logger.info(f"Found {len(datasources)} unanalyzed datasources.")
         for ds in datasources:
             prompt = prompt_template.substitute(
                 title=ds.title, abstract=ds.abstract_or_summary or ""
             )
 
-            response = ask_llm(prompt)
+            # Run ask_llm in a thread
+            response = await asyncio.to_thread(ask_llm, prompt)
             try:
                 result = json.loads(response)
             except Exception as e:
@@ -42,9 +44,12 @@ async def main():
                 summary=result.get("summary"),
                 impact=result.get("impact"),
             )
-            session.add(analysis)
-            ds.analyzed = True
-            session.commit()
+            # Add and commit in a thread
+            def add_and_commit():
+                session.add(analysis)
+                ds.analyzed = True
+                session.commit()
+            await asyncio.to_thread(add_and_commit)
             logger.info(f"Analyzed datasource {ds.id} ({ds.title})")
 
     except Exception as e:
