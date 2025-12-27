@@ -1,4 +1,0 @@
-{"level": "INFO", "message": "Executing pipeline `sales_pipeline` #2 via trigger `daily`", "loggerName": "plombery.2", "timestamp": "2025-12-27T00:29:04.127Z", "pipeline": "sales_pipeline", "task": null}
-{"level": "INFO", "message": "Executing task fetch_raw_sales_data", "loggerName": "plombery.2", "timestamp": "2025-12-27T00:29:04.127Z", "pipeline": "sales_pipeline", "task": null}
-{"level": "DEBUG", "message": "Fetching sales data...", "loggerName": "plombery.2-fetch_raw_sales_data", "timestamp": "2025-12-27T00:29:04.128Z", "pipeline": "sales_pipeline", "task": "fetch_raw_sales_data"}
-{"level": "INFO", "message": "Fetched 50 sales data rows", "loggerName": "plombery.2-fetch_raw_sales_data", "timestamp": "2025-12-27T00:29:04.128Z", "pipeline": "sales_pipeline", "task": "fetch_raw_sales_data"}
