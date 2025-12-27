@@ -57,6 +57,7 @@ def _build_query(keywords: list[str], categories: list[str]) -> str:
 
 @task
 async def main(params: InputParams | None = None):
+    import asyncio
     if params is None:
         params = InputParams()
 
@@ -71,7 +72,8 @@ async def main(params: InputParams | None = None):
         "sortOrder": "descending",
     }
 
-    feed = feedparser.parse(params.base_url + urlencode(query))
+    # Run feedparser.parse in a thread to avoid blocking event loop
+    feed = await asyncio.to_thread(feedparser.parse, params.base_url + urlencode(query))
 
     extracted = 0
     added = 0
@@ -92,7 +94,8 @@ async def main(params: InputParams | None = None):
         }
 
         try:
-            inserted = insert_datasource(data)
+            # Run insert_datasource in a thread to avoid blocking event loop
+            inserted = await asyncio.to_thread(insert_datasource, data)
         except Exception:
             # ignore insert errors and continue
             inserted = False
