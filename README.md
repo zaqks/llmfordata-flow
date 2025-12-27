@@ -1,17 +1,15 @@
- 
+# Data Science & Generative AI Watch Tool Applied to Data (LLM for Data)
 
-# TP-VT
+The tool enables monitoring the evolution of AI applied to Big Data:
+- AutoML, Data Quality AI, LLM for ETL, AI agents for cleansing and sourcing.
 
-We're building an open-source platform designed for GenAI research teams in data science. 
-We prioritize staying ahead of patented models by aggregating and analyzing state-of-the-art research from public sources, enabling cutting-edge technique development without IP risks.
+## Features:
+- Collection from arXiv, Google Scholar, Databricks, Snowflake, NVIDIA publications.
+- Analysis of collected data to identify best practices (embedding models, RAG, fine-tuning on data lakes).
+- Detection of emerging algorithms.
+- Generation of synthetic fact sheets for decision-makers.
+- Alerts on new data processing-oriented models.
 
-## Problem Statement
-
-Research teams need continuous access to the latest advancements without copying proprietary work. Our platform solves this by providing a multi-actor dashboard system:
-
-- **Monitor**: Selects and manages data sources for automated ingestion.
-- **Analyst**: Analyzes aggregated data and generates research repositories.
-- **Decision Maker**: Reviews analytics and exports decision-ready reports.
 
 ## Core Features
 

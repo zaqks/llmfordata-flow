@@ -1,0 +1,30 @@
+import os
+from sqlalchemy import Column, Integer, String, Text, create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
+# Base class for all models
+Base = declarative_base()
+
+# Datasource model matching ingestion CSV columns
+class Datasource(Base):
+    __tablename__ = 'datasources'
+    id = Column(Integer, primary_key=True, index=True)
+    source = Column(String, nullable=False)
+    external_id = Column(String, nullable=True)
+    title = Column(String, nullable=False)
+    abstract_or_summary = Column(Text, nullable=True)
+    authors = Column(String, nullable=True)
+    date = Column(String, nullable=True)
+    url = Column(String, unique=True, nullable=False)
+    tags = Column(String, nullable=True)
+
+# Database connection
+engine = create_engine(os.getenv("DATABASE_URL"))  # SQLite database file
+
+# Session factory
+SessionLocal = sessionmaker(bind=engine)
+
+# This creates all tables defined in Base subclasses
+if __name__ == "__main__":
+    Base.metadata.create_all(engine)
