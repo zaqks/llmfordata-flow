@@ -31,16 +31,16 @@ class InputParams(BaseModel):
     )
     max_results: int = Field(200, alias="MAX_RESULTS")
 
-    @validator('keywords', pre=True)
+    @validator("keywords", pre=True)
     def parse_keywords(cls, v):
         if isinstance(v, str):
-            return [item.strip() for item in v.split(',')]
+            return [item.strip() for item in v.split(",")]
         return v
 
-    @validator('categories', pre=True)
+    @validator("categories", pre=True)
     def parse_categories(cls, v):
         if isinstance(v, str):
-            return [item.strip() for item in v.split(',')]
+            return [item.strip() for item in v.split(",")]
         return v
 
     class Config:
@@ -52,12 +52,11 @@ def _build_query(keywords: list[str], categories: list[str]) -> str:
     cat = " OR ".join(f"cat:{c}" for c in categories)
     return f"({kw}) AND ({cat})"
 
- 
-
 
 @task
 async def main(params: InputParams | None = None):
     import asyncio
+
     if params is None:
         params = InputParams()
 
@@ -109,10 +108,25 @@ async def main(params: InputParams | None = None):
     return {"extracted": extracted, "inserted": added}
 
 
+import httpx
+
+
+@task
+async def trigger_llm_analysis():
+    # Trigger LLM analysis after ingestion
+    try:
+        response = httpx.post(
+            "http://127.0.0.1:8080/api/pipelines/datasource_analysis_llm/run"
+        )
+        print(f"LLM analysis triggered: {response.status_code}")
+    except Exception as e:
+        print(f"Failed to trigger LLM analysis: {e}")
+
+
 register_pipeline(
     id="arxiv_ingestion",
     description="Ingest recent arXiv papers matching keywords",
-    tasks=[main],
+    tasks=[main, trigger_llm_analysis],
     triggers=[
         Trigger(
             id="hourly",
