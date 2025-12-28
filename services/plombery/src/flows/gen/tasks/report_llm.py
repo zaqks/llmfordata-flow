@@ -41,9 +41,6 @@ def generate_report(analysis_rows, prompt_markdown, batch_size):
 	"""Generate the markdown report using LLM in batches."""
 	md_report = ""
 	total_rows = len(analysis_rows)
-	if not analysis_rows:
-		print("No analysis rows found for report.")
-		return ""
 	print(f"Total rows to process for report: {total_rows}")
 	num_batches = (total_rows + batch_size - 1) // batch_size
 	for i, batch in enumerate(batch_iterable(analysis_rows, batch_size), 1):

@@ -148,5 +148,5 @@ def insert_datasource_analysis(data: dict) -> bool:
 
 # non exported stuff
 def fetch_analysis_rows(session, num_rows):
-    return session.query(DatasourceAnalysis).filter(DatasourceAnalysis.exported == False).order_by(DatasourceAnalysis.id).limit(num_rows)
+    return session.query(DatasourceAnalysis).filter(DatasourceAnalysis.exported == False).order_by(DatasourceAnalysis.id).limit(num_rows).all()
     # return session.query(DatasourceAnalysis).order_by(DatasourceAnalysis.id).limit(num_rows).all()

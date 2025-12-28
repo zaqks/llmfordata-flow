@@ -72,6 +72,8 @@ async def report_and_charts_pipeline(params: InputParams):
                 d['source'] = datasource.source if datasource else None
                 d['date'] = datasource.date if datasource else None
                 rows_dicts.append(d)
+
+            
             import pandas as pd
             df = pd.DataFrame(rows_dicts)
             if 'source' in df.columns:
@@ -79,18 +81,16 @@ async def report_and_charts_pipeline(params: InputParams):
             if 'date' in df.columns:
                 df['date'] = pd.to_datetime(df['date'], errors='coerce')
             return analysis_rows, df
+        
         analysis_rows, df = await loop.run_in_executor(None, fetch_rows)
-        print(analysis_rows)
-        print(df.columns)
+
     except Exception as e:
         logger.error(f"Error fetching analysis rows: {e}")
         session.close()
         raise
 
     # 3. Generate report (run in executor)
-    def get_prompt():
-        return load_template(PROMPT_MARKDOWN_PATH)
-    prompt_markdown = await loop.run_in_executor(None, get_prompt)
+    prompt_markdown = load_template(PROMPT_MARKDOWN_PATH)
     report_path = os.path.join(output_dir, "report.md")
     try:
         logger.info("Generating report...")
@@ -139,6 +139,12 @@ async def report_and_charts_pipeline(params: InputParams):
     # 6. save to db (run in executor)
     await loop.run_in_executor(None, save_report_and_documents, output_dir, session)
     logger.info(f"Report and charts saved to db")
+
+
+    # Mark used rows as exported and commit
+    for row in analysis_rows:
+        row.exported = True
+    session.commit()
 
     session.close()
     await loop.run_in_executor(None, shutil.rmtree, output_dir)
