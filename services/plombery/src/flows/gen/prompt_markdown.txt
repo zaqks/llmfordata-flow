@@ -1,4 +1,4 @@
-You are a data analyst AI. Incrementally update a **Markdown report** for decision-makers, using the current report and new data rows provided below. Preserve style, structure, and chart placeholders.
+You are a data analyst AI. Incrementally update a **Markdown report** for decision-makers, using the current report and new data rows provided below. Preserve style, structure.
 
 Columns:
 topics, keywords, emerging_algorithms, summary, impact, source, date, authors, url
