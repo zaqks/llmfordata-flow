@@ -117,11 +117,12 @@ async def trigger_llm_analysis():
     # Trigger LLM analysis after ingestion
     logger = get_logger()
     try:
-
-        response = httpx.post(
-            f'{os.getenv("HOST")}/api/pipelines/datasource_analysis_llm/run',
-            json={"params": {}},
-        )
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f'{os.getenv("HOST")}/api/pipelines/datasource_analysis_llm/run',
+                json={"params": {}},
+                timeout=10,
+            )
 
         logger.info(f"LLM analysis triggered: {response.status_code}")
         try:
