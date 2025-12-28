@@ -218,9 +218,7 @@ def plot_source_vs_impact_heatmap(df, top_n=15, output_dir=None):
     plt.close()
 
 # Main function to generate all charts
-def generate_all_charts(df=None, output_dir=None, num_rows=NUM_ROWS_TO_USE):
-    if df is None:
-        df = get_limited_analysis_df(num_rows=num_rows)
+def generate_all_charts(df, output_dir=None):
     plot_publications_over_time(df, output_dir=output_dir)
     plot_publications_by_source(df, output_dir=output_dir)
     plot_topic_frequency(df, output_dir=output_dir)

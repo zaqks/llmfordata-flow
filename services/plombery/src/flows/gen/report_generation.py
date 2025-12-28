@@ -54,32 +54,61 @@ def report_and_charts_pipeline(params: InputParams):
     os.makedirs(output_dir, exist_ok=True)
     logger.info(f"Created output directory: {output_dir}")
 
-    # 2. Generate report
-    prompt_markdown = load_template(PROMPT_MARKDOWN_PATH)
+    # 2. Fetch analysis data rows
     session = SessionLocal()
+    try:
+        analysis_rows = fetch_analysis_rows(session, num_rows)
+        print(analysis_rows)
+        # Convert ORM objects to dicts for DataFrame, and add source/date from Datasource
+        from ...utils._db import Datasource
+        rows_dicts = []
+        for row in analysis_rows:
+            d = row.__dict__.copy()
+            d.pop('_sa_instance_state', None)
+            # Fetch related Datasource
+            datasource = session.query(Datasource).filter_by(id=row.datasource_id).first()
+            d['source'] = datasource.source if datasource else None
+            d['date'] = datasource.date if datasource else None
+            rows_dicts.append(d)
+
+        import pandas as pd
+        df = pd.DataFrame(rows_dicts)
+        # Ensure correct types
+        if 'source' in df.columns:
+            df['source'] = df['source'].astype('category')
+        if 'date' in df.columns:
+            df['date'] = pd.to_datetime(df['date'], errors='coerce')
+        print(df.columns)
+    except Exception as e:
+        logger.error(f"Error fetching analysis rows: {e}")
+        session.close()
+        raise
+
+    # 3. Generate report
+    prompt_markdown = load_template(PROMPT_MARKDOWN_PATH)
     report_path = os.path.join(output_dir, "report.md")
     try:
         logger.info("Generating report...")
-        md_report = generate_report(session, prompt_markdown, num_rows, batch_size)
+        md_report = generate_report(analysis_rows, prompt_markdown, batch_size)
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(md_report)
         logger.info(f"Report written to {report_path}")
     except Exception as e:
         logger.error(f"Error generating report: {e}")
-        raise
-    finally:
         session.close()
+        raise
 
-    # 3. Generate charts (ensure charts are saved in output_dir)
+    # 4. Generate charts (ensure charts are saved in output_dir)
     try:
         logger.info("Generating charts...")
-        generate_all_charts(output_dir=output_dir)
+        generate_all_charts(df, output_dir=output_dir)
         logger.info(f"Charts generated in {output_dir}")
     except Exception as e:
         logger.error(f"Error generating charts: {e}")
+        session.close()
         raise
 
-    # 4. Append charts section to report
+    # 5. Append charts section to report
     try:
         logger.info("Appending charts section to report...")
         append_charts_section(
@@ -91,14 +120,16 @@ def report_and_charts_pipeline(params: InputParams):
         )
     except Exception as e:
         logger.error(f"Error appending charts section: {e}")
+        session.close()
         raise
 
     logger.info(f"Report and charts generated in {output_dir}")
 
-    # 5. save to db
+    # 6. save to db
     save_report_and_documents(output_dir, session)
     logger.info(f"Report and charts saved to db")
 
+    session.close()
     shutil.rmtree(output_dir)
     logger.info(f"Cleaned")
 
