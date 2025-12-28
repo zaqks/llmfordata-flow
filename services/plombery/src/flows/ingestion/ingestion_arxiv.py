@@ -1,3 +1,4 @@
+import os
 import feedparser
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
@@ -114,13 +115,23 @@ import httpx
 @task
 async def trigger_llm_analysis():
     # Trigger LLM analysis after ingestion
+    logger = get_logger()
     try:
+
         response = httpx.post(
-            "http://127.0.0.1:8080/api/pipelines/datasource_analysis_llm/run"
+            f'{os.getenv("HOST")}/api/pipelines/datasource_analysis_llm/run',
+            json={"params": {}},
         )
-        print(f"LLM analysis triggered: {response.status_code}")
+
+        logger.info(f"LLM analysis triggered: {response.status_code}")
+        try:
+            return response.json()
+        except Exception:
+            logger.warning(f"Non-JSON response: {response.text}")
+            return {"status_code": response.status_code, "text": response.text}
     except Exception as e:
-        print(f"Failed to trigger LLM analysis: {e}")
+        logger.error(f"Failed to trigger LLM analysis: {e}")
+        return {"error": str(e)}
 
 
 register_pipeline(
