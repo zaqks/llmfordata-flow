@@ -1,29 +1,38 @@
+
 import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sqlalchemy.orm import Session
-from ...utils._db import SessionLocal, Datasource, DatasourceAnalysis
+from ....utils._db import SessionLocal, Datasource, DatasourceAnalysis
 
-def get_analysis_df():
+# Configurable number of rows to use for chart generation
+NUM_ROWS_TO_USE = 20  # Set this to the number of rows you want to process
+
+
+# Helper to fetch limited rows for chart generation
+def get_limited_analysis_df(num_rows=NUM_ROWS_TO_USE):
     session = SessionLocal()
-    # Join Datasource and DatasourceAnalysis for richer context
-    query = session.query(
-        Datasource.id,
-        Datasource.source,
-        Datasource.date,
-        DatasourceAnalysis.topics,
-        DatasourceAnalysis.keywords,
-        DatasourceAnalysis.emerging_algorithms,
-        DatasourceAnalysis.impact,
-        DatasourceAnalysis.created_at
-    ).join(DatasourceAnalysis, Datasource.id == DatasourceAnalysis.datasource_id)
-    df = pd.DataFrame([row._asdict() for row in query.all()])
-    session.close()
-    return df
+    try:
+        # Join Datasource and DatasourceAnalysis for richer context, limit rows
+        query = session.query(
+            Datasource.id,
+            Datasource.source,
+            Datasource.date,
+            DatasourceAnalysis.topics,
+            DatasourceAnalysis.keywords,
+            DatasourceAnalysis.emerging_algorithms,
+            DatasourceAnalysis.impact,
+            DatasourceAnalysis.created_at
+        ).join(DatasourceAnalysis, Datasource.id == DatasourceAnalysis.datasource_id)
+        query = query.order_by(DatasourceAnalysis.id).limit(num_rows)
+        df = pd.DataFrame([row._asdict() for row in query.all()])
+        return df
+    finally:
+        session.close()
 
 # 1. Publications over time
-def plot_publications_over_time(df):
+def plot_publications_over_time(df, output_dir=None):
     if 'date' in df.columns:
         df['date'] = pd.to_datetime(df['date'], errors='coerce')
         counts = df['date'].dt.to_period('M').value_counts().sort_index()
@@ -33,11 +42,12 @@ def plot_publications_over_time(df):
         for spine in ax.spines.values():
             spine.set_visible(False)
         plt.tight_layout()
-        plt.savefig('1.png')
+        fname = '1.png' if output_dir is None else os.path.join(output_dir, '1.png')
+        plt.savefig(fname)
         plt.close()
 
 # 2. Publications by source
-def plot_publications_by_source(df):
+def plot_publications_by_source(df, output_dir=None):
     counts = df['source'].value_counts()
     ax = counts.plot(kind='bar', figsize=(8,5))
     ax.set_xlabel('Source')
@@ -45,11 +55,12 @@ def plot_publications_by_source(df):
     for spine in ax.spines.values():
         spine.set_visible(False)
     plt.tight_layout()
-    plt.savefig('2.png')
+    fname = '2.png' if output_dir is None else os.path.join(output_dir, '2.png')
+    plt.savefig(fname)
     plt.close()
 
 # 3. Topic frequency distribution
-def plot_topic_frequency(df):
+def plot_topic_frequency(df, output_dir=None):
     topics = df['topics'].dropna().str.split(',')
     all_topics = [t.strip() for sublist in topics for t in sublist]
     s = pd.Series(all_topics)
@@ -60,11 +71,12 @@ def plot_topic_frequency(df):
     for spine in ax.spines.values():
         spine.set_visible(False)
     plt.tight_layout()
-    plt.savefig('3.png')
+    fname = '3.png' if output_dir is None else os.path.join(output_dir, '3.png')
+    plt.savefig(fname)
     plt.close()
 
 # 4. Keyword frequency (top terms)
-def plot_keyword_frequency(df, top_n=20):
+def plot_keyword_frequency(df, top_n=20, output_dir=None):
     keywords = df['keywords'].dropna().str.split(',')
     all_keywords = [k.strip() for sublist in keywords for k in sublist]
     s = pd.Series(all_keywords)
@@ -75,11 +87,12 @@ def plot_keyword_frequency(df, top_n=20):
     for spine in ax.spines.values():
         spine.set_visible(False)
     plt.tight_layout()
-    plt.savefig('4.png')
+    fname = '4.png' if output_dir is None else os.path.join(output_dir, '4.png')
+    plt.savefig(fname)
     plt.close()
 
 # 5. Topic co-occurrence heatmap
-def plot_topic_cooccurrence(df, top_n=20):
+def plot_topic_cooccurrence(df, top_n=20, output_dir=None):
     topics = df['topics'].dropna().str.split(',')
     all_topics = [t.strip() for sublist in topics for t in sublist]
     top_topics = pd.Series(all_topics).value_counts().head(top_n).index
@@ -103,11 +116,12 @@ def plot_topic_cooccurrence(df, top_n=20):
     for spine in ax.spines.values():
         spine.set_visible(False)
     plt.tight_layout()
-    plt.savefig('5.png')
+    fname = '5.png' if output_dir is None else os.path.join(output_dir, '5.png')
+    plt.savefig(fname)
     plt.close()
 
 # 6. Emerging algorithms by topic
-def plot_emerging_algorithms_by_topic(df, top_n=15):
+def plot_emerging_algorithms_by_topic(df, top_n=15, output_dir=None):
     # For each topic, count unique emerging algorithms
     topic_algo = []
     for _, row in df.dropna(subset=['topics', 'emerging_algorithms']).iterrows():
@@ -124,11 +138,12 @@ def plot_emerging_algorithms_by_topic(df, top_n=15):
     for spine in ax.spines.values():
         spine.set_visible(False)
     plt.tight_layout()
-    plt.savefig('6.png')
+    fname = '6.png' if output_dir is None else os.path.join(output_dir, '6.png')
+    plt.savefig(fname)
     plt.close()
 
 # 7. Emerging algorithms trend over time
-def plot_emerging_algorithms_trend(df):
+def plot_emerging_algorithms_trend(df, output_dir=None):
     df = df.dropna(subset=['emerging_algorithms', 'date'])
     df['date'] = pd.to_datetime(df['date'], errors='coerce')
     df = df.dropna(subset=['date'])
@@ -146,11 +161,12 @@ def plot_emerging_algorithms_trend(df):
     for spine in ax.spines.values():
         spine.set_visible(False)
     plt.tight_layout()
-    plt.savefig('7.png')
+    fname = '7.png' if output_dir is None else os.path.join(output_dir, '7.png')
+    plt.savefig(fname)
     plt.close()
 
 # 8. Impact distribution
-def plot_impact_distribution(df):
+def plot_impact_distribution(df, output_dir=None):
     counts = df['impact'].value_counts()
     ax = counts.plot(kind='bar', figsize=(8,5))
     ax.set_xlabel('Impact')
@@ -158,11 +174,12 @@ def plot_impact_distribution(df):
     for spine in ax.spines.values():
         spine.set_visible(False)
     plt.tight_layout()
-    plt.savefig('8.png')
+    fname = '8.png' if output_dir is None else os.path.join(output_dir, '8.png')
+    plt.savefig(fname)
     plt.close()
 
 # 9. Impact by topic
-def plot_impact_by_topic(df, top_n=15):
+def plot_impact_by_topic(df, top_n=15, output_dir=None):
     topic_impact = []
     for _, row in df.dropna(subset=['topics', 'impact']).iterrows():
         topics = [t.strip() for t in row['topics'].split(',')]
@@ -177,11 +194,12 @@ def plot_impact_by_topic(df, top_n=15):
     for spine in ax.spines.values():
         spine.set_visible(False)
     plt.tight_layout()
-    plt.savefig('9.png')
+    fname = '9.png' if output_dir is None else os.path.join(output_dir, '9.png')
+    plt.savefig(fname)
     plt.close()
 
 # 10. Source vs impact heatmap
-def plot_source_vs_impact_heatmap(df, top_n=15):
+def plot_source_vs_impact_heatmap(df, top_n=15, output_dir=None):
     counts = df.groupby(['source', 'impact']).size().unstack(fill_value=0)
     # Limit to top N sources
     counts = counts.loc[counts.sum(axis=1).sort_values(ascending=False).head(top_n).index]
@@ -195,20 +213,21 @@ def plot_source_vs_impact_heatmap(df, top_n=15):
     for spine in ax.spines.values():
         spine.set_visible(False)
     plt.tight_layout()
-    plt.savefig('10.png')
+    fname = '10.png' if output_dir is None else os.path.join(output_dir, '10.png')
+    plt.savefig(fname)
     plt.close()
 
 # Main function to generate all charts
-def generate_all_charts(df=None):
+def generate_all_charts(df=None, output_dir=None, num_rows=NUM_ROWS_TO_USE):
     if df is None:
-        df = get_analysis_df()
-    plot_publications_over_time(df)
-    plot_publications_by_source(df)
-    plot_topic_frequency(df)
-    plot_keyword_frequency(df)
-    plot_topic_cooccurrence(df)
-    plot_emerging_algorithms_by_topic(df)
-    plot_emerging_algorithms_trend(df)
-    plot_impact_distribution(df)
-    plot_impact_by_topic(df)
-    plot_source_vs_impact_heatmap(df)
+        df = get_limited_analysis_df(num_rows=num_rows)
+    plot_publications_over_time(df, output_dir=output_dir)
+    plot_publications_by_source(df, output_dir=output_dir)
+    plot_topic_frequency(df, output_dir=output_dir)
+    plot_keyword_frequency(df, output_dir=output_dir)
+    plot_topic_cooccurrence(df, output_dir=output_dir)
+    plot_emerging_algorithms_by_topic(df, output_dir=output_dir)
+    plot_emerging_algorithms_trend(df, output_dir=output_dir)
+    plot_impact_distribution(df, output_dir=output_dir)
+    plot_impact_by_topic(df, output_dir=output_dir)
+    plot_source_vs_impact_heatmap(df, output_dir=output_dir)

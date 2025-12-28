@@ -1,16 +1,22 @@
 """
 Flow: report_generation
-Tasks: chat_generation, result_generation, report_concat
+Tasks: report_generation, charts_generation, report_concat
 """
 
+import os
+import shutil
+from datetime import datetime
 from plombery import task, get_logger, Trigger, register_pipeline
 from apscheduler.triggers.interval import IntervalTrigger
 
-
-from .report_llm import *
-from .charts_generation import *
-from .report_concat import *
-
+from .tasks.report_llm import (
+    fetch_analysis_rows,
+    generate_report,
+    load_template,
+    PROMPT_MARKDOWN_PATH,
+)
+from .tasks.charts_generation import generate_all_charts
+from .tasks.report_concat import append_charts_section
 from ...utils._db import SessionLocal
 from pydantic import BaseModel, Field
 
@@ -21,58 +27,47 @@ class InputParams(BaseModel):
     batch_size: int = Field(4, description="Batch size for report generation.")
 
 
-# Shared data row fetcher (from report_llm)
-def get_shared_rows(num_rows):
-    session = SessionLocal()
-    try:
-        rows = fetch_analysis_rows(session, num_rows)
-        return rows
-    finally:
-        session.close()
-
-
-# Task 1: Chat Generation
+# Single task: Full report and charts pipeline
 @task
-def chat_generation(params: InputParams):
+def report_and_charts_pipeline(params: InputParams):
     num_rows = params.num_rows
     batch_size = params.batch_size
-    rows = get_shared_rows(num_rows)
+
+    # 1. Create timestamped folder in /tmp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = f"/tmp/report_{timestamp}"
+    os.makedirs(output_dir, exist_ok=True)
+
+    # 2. Generate report
     prompt_markdown = load_template(PROMPT_MARKDOWN_PATH)
     session = SessionLocal()
+    report_path = os.path.join(output_dir, "report.md")
     try:
         md_report = generate_report(session, prompt_markdown, num_rows, batch_size)
-        # Write the report to REPORT_PATH
-        with open(REPORT_PATH, "w", encoding="utf-8") as f:
+        with open(report_path, "w", encoding="utf-8") as f:
             f.write(md_report)
-        return f"Report written to {REPORT_PATH}"
     finally:
         session.close()
 
+    # 3. Generate charts (ensure charts are saved in output_dir)
+    # If generate_all_charts supports output_dir, pass it; else, move files after generation
+    generate_all_charts(output_dir=output_dir)
 
-# Task 2: Result Generation
-@task
-def result_generation(params: InputParams):
-    # num_rows = params.num_rows
-    # batch_size = params.batch_size
-    # rows = get_shared_rows(num_rows)
-    # Generate all charts using the same rows (if needed, adapt charts_generation to accept rows)
-    generate_all_charts()  # This uses all data, can be adapted
-    return "Charts generated."
+    # 4. Append charts section to report
+    # Patch: temporarily chdir to output_dir so append_charts_section finds images
 
+    append_charts_section(
+        os.path.join(output_dir, "report.md"),
+        os.path.join(output_dir, "report_charts.md"),
+    )
 
-# Task 3: Report Concat
-@task
-def report_concat_task(params: InputParams):
-    # Use the same report path as in report_llm
-    report_path = REPORT_PATH
-    append_charts_section(report_path)
-    return f"Charts section appended to {report_path}"
+    return f"Report and charts generated in {output_dir}"
 
 
 register_pipeline(
     id="report_generation",
     description="Generate a report and charts from analysis data.",
-    tasks=[chat_generation, result_generation, report_concat_task],
+    tasks=[report_and_charts_pipeline],
     triggers=[
         # Trigger(
         #     id="hourly",
