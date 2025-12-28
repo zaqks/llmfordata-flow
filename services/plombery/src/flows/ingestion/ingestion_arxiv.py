@@ -140,12 +140,12 @@ register_pipeline(
     description="Ingest recent arXiv papers matching keywords",
     tasks=[main, trigger_llm_analysis],
     triggers=[
-        Trigger(
-            id="hourly",
-            name="Hourly",
-            description="Run the pipeline every hour",
-            schedule=IntervalTrigger(hours=1),
-        ),
+        # Trigger(
+        #     id="hourly",
+        #     name="Hourly",
+        #     description="Run the pipeline every hour",
+        #     schedule=IntervalTrigger(hours=1),
+        # ),
     ],
     params=InputParams,
 )

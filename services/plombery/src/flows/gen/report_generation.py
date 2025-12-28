@@ -27,19 +27,17 @@ from pydantic import BaseModel, Field
 
 
 # Loader for the LLM prompt template (async)
-async def load_llm_prompt():
-    loop = asyncio.get_event_loop()
-    def _read():
-        with open(PROMPT_MARKDOWN_PATH, "r", encoding="utf-8") as f:
-            return f.read()
-    return await loop.run_in_executor(None, _read)
+def load_llm_prompt():
+    with open(PROMPT_MARKDOWN_PATH, "r", encoding="utf-8") as f:
+        return f.read()
+
 
 
 class InputParams(BaseModel):
     num_rows: int = Field(4, description="Number of rows to use for report generation.")
     batch_size: int = Field(4, description="Batch size for report generation.")
     prompt: str = Field(
-        "", alias="PROMPT", description="Prompt template for the LLM."
+        load_llm_prompt(), alias="PROMPT", description="Prompt template for the LLM."
     )
 
 
