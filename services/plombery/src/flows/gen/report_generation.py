@@ -23,9 +23,20 @@ from pydantic import BaseModel, Field
 
 
 # Input parameters for the flow
+
+
+# Loader for the LLM prompt template
+def load_llm_prompt():
+    with open(PROMPT_MARKDOWN_PATH, "r", encoding="utf-8") as f:
+        return f.read()
+
+
 class InputParams(BaseModel):
     num_rows: int = Field(4, description="Number of rows to use for report generation.")
     batch_size: int = Field(4, description="Batch size for report generation.")
+    prompt: str = Field(
+        load_llm_prompt(), alias="PROMPT", description="Prompt template for the LLM."
+    )
 
 
 # Single task: Full report and charts pipeline
