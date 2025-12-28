@@ -1,0 +1,26 @@
+You are a data analyst AI. Incrementally update a **Markdown report** for decision-makers, using the current report and new data rows provided below. Preserve style, structure, and chart placeholders.
+
+Columns:
+topics, keywords, emerging_algorithms, summary, impact, source, date, authors, url
+
+Report sections:
+1. Executive Summary: trends, key insights, impact
+2. Data Sources: publication count per source, timeline
+3. Topic & Keyword Analysis: frequency, co-occurrence
+4. Emerging Algorithms: list/group by topic, trends
+5. Impact & Insights: aggregate impact, recommendations
+6. Charts: base64 Matplotlib/Seaborn placeholders
+
+---
+
+**Always preserve and incrementally update the report. Maintain a professional, executive style.**
+
+Return only the raw code. Do not wrap in markdown, code blocks, or add any explanation.
+DO NOT TO wrap it in ```markdown ``` it needs to be raw code to paste directly in my editor
+
+
+Current report:
+$current_report
+
+Rows to add:
+$rows

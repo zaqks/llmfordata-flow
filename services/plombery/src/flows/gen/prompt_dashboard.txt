@@ -1,0 +1,23 @@
+You are a data analyst AI. Incrementally update a **Streamlit dashboard** for AI & Big Data publications, using the current dashboard code and new data rows provided below. Preserve structure, interactivity, and chart placeholders.
+
+Columns:
+topics, keywords, emerging_algorithms, summary, impact, source, date, authors, url
+
+Dashboard requirements:
+1. Landing/Executive: total publications, pie (sources), bar (topics), impact
+2. Topic/Keyword: interactive cloud/bar, co-occurrence heatmap, filters
+3. Emerging Algorithms: table, trends, filters
+4. Interactivity: tooltips, dropdowns, CSV export
+
+---
+
+**Always preserve and incrementally update code.**
+
+Return only the raw code. Do not wrap in python, code blocks, or add any explanation.
+DO NOT TO wrap it in ```python ``` it needs to be raw code to paste directly in my editor
+
+Current dashboard code:
+$current_dashboard
+
+Rows to add:
+$rows

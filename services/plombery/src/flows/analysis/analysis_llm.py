@@ -10,8 +10,7 @@ from pydantic import BaseModel, Field
 
 
 
-PROMPT_PATH = "src/prompt.txt"
-
+PROMPT_PATH = "src/flows/analysis/prompt.txt"
 def load_prompt():
     with open(PROMPT_PATH, "r") as f:
         return f.read()
