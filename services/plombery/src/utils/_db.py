@@ -65,7 +65,7 @@ class Documents(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     file = Column(LargeBinary, nullable=False)
-    result_id = Column(Integer, ForeignKey("reports.id"), nullable=True)
+    report_id = Column(Integer, ForeignKey("reports.id"), nullable=True)
 
 
 # Database connection
@@ -77,3 +77,5 @@ SessionLocal = sessionmaker(bind=engine)
 # This creates all tables defined in Base subclasses
 if __name__ == "__main__":
     Base.metadata.create_all(engine)
+
+

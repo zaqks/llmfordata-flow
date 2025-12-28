@@ -1,3 +1,54 @@
+from ._db import SessionLocal, Datasource, DatasourceAnalysis, Reports, Documents
+# --- Utility function to save report and documents ---
+def save_report_and_documents(output_dir, session=None):
+    """
+    Creates a Reports entry with the timestamp from the output_dir name, and saves Documents for all relevant files in the directory.
+    Args:
+        output_dir (str): Path to the output directory (e.g., /tmp/report_YYYYMMDD_HHMMSS)
+        session: Optional SQLAlchemy session. If None, a new session is created and closed inside.
+    Returns:
+        report_id (int): The ID of the created Reports entry.
+    """
+    import os
+    from datetime import datetime
+
+    own_session = False
+    if session is None:
+        session = SessionLocal()
+        own_session = True
+    try:
+        # Extract timestamp from folder name (assumes /tmp/report_YYYYMMDD_HHMMSS)
+        folder_name = os.path.basename(output_dir)
+        try:
+            ts_str = folder_name.split('_', 1)[-1]
+            created_at = datetime.strptime(ts_str, "%Y%m%d_%H%M%S")
+        except Exception:
+            created_at = datetime.utcnow()
+
+        # Create Reports entry
+        report = Reports(created_at=created_at)
+        session.add(report)
+        session.flush()  # Get report.id
+
+        # File types to save: .md, .png, .jpg, .jpeg, .svg
+        valid_exts = {".md", ".png", ".jpg", ".jpeg", ".svg"}
+        for fname in os.listdir(output_dir):
+            fpath = os.path.join(output_dir, fname)
+            if not os.path.isfile(fpath):
+                continue
+            ext = os.path.splitext(fname)[1].lower()
+            if ext not in valid_exts:
+                continue
+            with open(fpath, "rb") as f:
+                file_bytes = f.read()
+            doc = Documents(name=fname, file=file_bytes, report_id=report.id)
+            session.add(doc)
+
+        session.commit()
+        return report.id
+    finally:
+        if own_session:
+            session.close()
 from ._db import SessionLocal, Datasource, DatasourceAnalysis
 from sqlalchemy.exc import IntegrityError
 
