@@ -21,19 +21,6 @@ REPORT_PATH = "report.md"
 PROMPT_MARKDOWN_PATH =  "src/flows/gen/prompt_markdown.txt"
 
 
-def fetch_analysis_rows(session, num_rows):
-	"""Fetch up to num_rows rows from datasource_analysis ordered by id."""
-	return session.query(DatasourceAnalysis).order_by(DatasourceAnalysis.id).limit(num_rows).all()
-
-# Expose a helper to fetch shared rows for flows
-def get_shared_rows(num_rows):
-	session = SessionLocal()
-	try:
-		rows = fetch_analysis_rows(session, num_rows)
-		return rows
-	finally:
-		session.close()
-
 def batch_iterable(iterable, batch_size):
 	"""Yield successive batches from iterable."""
 	total = len(iterable)
@@ -49,10 +36,6 @@ def rows_to_markdown(batch_rows):
 		f"- **Topics:** {row.topics}\n  **Keywords:** {row.keywords}\n  **Emerging Algorithms:** {row.emerging_algorithms}\n  **Summary:** {row.summary}\n  **Impact:** {row.impact}\n  **Source:** {getattr(row, 'source', '')}\n  **Date:** {getattr(row, 'date', '')}\n  **Authors:** {getattr(row, 'authors', '')}\n  **URL:** {getattr(row, 'url', '')}"
 		for row in batch_rows
 	])
-
-
-
-
 
 def generate_report(analysis_rows, prompt_markdown, batch_size):
 	"""Generate the markdown report using LLM in batches."""

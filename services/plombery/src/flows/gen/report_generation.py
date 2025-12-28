@@ -10,8 +10,8 @@ import asyncio
 from plombery import task, get_logger, Trigger, register_pipeline
 from apscheduler.triggers.interval import IntervalTrigger
 
+from ...utils._tools import fetch_analysis_rows
 from .tasks.report_llm import (
-    fetch_analysis_rows,
     generate_report,
     load_template,
     PROMPT_MARKDOWN_PATH,

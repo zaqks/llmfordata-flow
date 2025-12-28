@@ -1,4 +1,6 @@
 from ._db import SessionLocal, Datasource, DatasourceAnalysis, Reports, Documents
+from sqlalchemy.exc import IntegrityError
+
 # --- Utility function to save report and documents ---
 def save_report_and_documents(output_dir, session=None):
     """
@@ -49,8 +51,6 @@ def save_report_and_documents(output_dir, session=None):
     finally:
         if own_session:
             session.close()
-from ._db import SessionLocal, Datasource, DatasourceAnalysis
-from sqlalchemy.exc import IntegrityError
 
 
 def exists_source_by_url(url: str) -> bool:
@@ -145,3 +145,8 @@ def insert_datasource_analysis(data: dict) -> bool:
         return False
     finally:
         session.close()
+
+# non exported stuff
+def fetch_analysis_rows(session, num_rows):
+    return session.query(DatasourceAnalysis).filter(DatasourceAnalysis.exported == False).order_by(DatasourceAnalysis.id).limit(num_rows)
+    # return session.query(DatasourceAnalysis).order_by(DatasourceAnalysis.id).limit(num_rows).all()
