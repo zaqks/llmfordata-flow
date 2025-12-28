@@ -1,8 +1,9 @@
 import os
+import gc
 import feedparser
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
-from ...utils._tools import insert_datasource
+from ...utils._tools import bulk_insert_datasources
 from typing import List
 from pydantic import BaseModel, Field
 
@@ -76,7 +77,8 @@ async def main(params: InputParams | None = None):
     feed = await asyncio.to_thread(feedparser.parse, params.base_url + urlencode(query))
 
     extracted = 0
-    added = 0
+    data_list = []
+    
     for e in feed.entries:
         published = datetime.strptime(e.published, "%Y-%m-%dT%H:%M:%SZ")
         if published < since:
@@ -92,20 +94,24 @@ async def main(params: InputParams | None = None):
             "url": e.link,
             "tags": "; ".join(t.term for t in e.tags),
         }
-
-        try:
-            # Run insert_datasource in a thread to avoid blocking event loop
-            inserted = await asyncio.to_thread(insert_datasource, data)
-        except Exception:
-            # ignore insert errors and continue
-            inserted = False
-
+        data_list.append(data)
         extracted += 1
-        if inserted:
-            added += 1
+
+    added = 0
+    if data_list:
+        try:
+            # Run bulk_insert_datasources in a thread
+            added = await asyncio.to_thread(bulk_insert_datasources, data_list)
+        except Exception as e:
+            logger.error(f"Error in bulk insert: {e}")
 
     logger.info("Extracted %s rows from arXiv", extracted)
     logger.info("Inserted %s new rows into DB", added)
+    
+    del feed
+    del data_list
+    gc.collect()
+    
     return {"extracted": extracted, "inserted": added}
 
 

@@ -47,6 +47,7 @@ class InputParams(BaseModel):
 
 @task
 async def report_and_charts_pipeline(params: InputParams):
+    import gc
     logger = get_logger()
     num_rows = params.num_rows
     batch_size = params.batch_size
@@ -63,17 +64,24 @@ async def report_and_charts_pipeline(params: InputParams):
     session = SessionLocal()
     try:
         def fetch_rows():
-            analysis_rows = fetch_analysis_rows(session, num_rows)
+            # Optimize fetching: join in DB instead of loop
+            from ...utils._db import DatasourceAnalysis
+            
+            query = session.query(DatasourceAnalysis, Datasource).join(
+                Datasource, DatasourceAnalysis.datasource_id == Datasource.id
+            ).filter(DatasourceAnalysis.exported == False).order_by(DatasourceAnalysis.id).limit(num_rows)
+            
+            results = query.all()
+            
+            analysis_rows = [r[0] for r in results]
             rows_dicts = []
-            for row in analysis_rows:
-                d = row.__dict__.copy()
+            for analysis, source in results:
+                d = analysis.__dict__.copy()
                 d.pop('_sa_instance_state', None)
-                datasource = session.query(Datasource).filter_by(id=row.datasource_id).first()
-                d['source'] = datasource.source if datasource else None
-                d['date'] = datasource.date if datasource else None
+                d['source'] = source.source
+                d['date'] = source.date
                 rows_dicts.append(d)
 
-            
             df = pd.DataFrame(rows_dicts)
             if 'source' in df.columns:
                 df['source'] = df['source'].astype('category')
@@ -90,6 +98,7 @@ async def report_and_charts_pipeline(params: InputParams):
     
     if not len(analysis_rows):
         logger.info("Nothing Interesting for now...")
+        session.close()
         return "Not enough data"
 
     # 3. Generate report (run in executor)
@@ -115,6 +124,8 @@ async def report_and_charts_pipeline(params: InputParams):
         logger.info("Generating charts...")
         await loop.run_in_executor(None, generate_all_charts, df, output_dir)
         logger.info(f"Charts generated in {output_dir}")
+        del df
+        gc.collect()
     except Exception as e:
         logger.error(f"Error generating charts: {e}")
         session.close()
@@ -152,6 +163,7 @@ async def report_and_charts_pipeline(params: InputParams):
     session.close()
     await loop.run_in_executor(None, shutil.rmtree, output_dir)
     logger.info(f"Cleaned")
+    gc.collect()
 
     return f"Report and charts generated as Saved to DB"
 

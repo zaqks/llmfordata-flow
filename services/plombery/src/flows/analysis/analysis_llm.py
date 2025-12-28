@@ -27,72 +27,101 @@ class InputParams(BaseModel):
 @task
 async def main():
     import asyncio
+    import gc
 
     logger = get_logger()
     prompt_template = Template(load_prompt())
-    session = SessionLocal()
-    datasources = []
-    try:
-        # Get all unanalyzed datasources (blocking, so run in thread)
-        datasources = await asyncio.to_thread(
-            lambda: session.query(Datasource).filter(Datasource.analyzed == False).all()
-        )
-        logger.info(f"Found {len(datasources)} unanalyzed datasources.")
-        for ds in datasources:
-            prompt = prompt_template.substitute(
-                title=ds.title, abstract=ds.abstract_or_summary or ""
+    
+    BATCH_SIZE = 10
+    CONCURRENCY = 5
+    total_analyzed = 0
+    
+    while True:
+        session = SessionLocal()
+        try:
+            # Fetch a batch of unanalyzed datasources
+            datasources = await asyncio.to_thread(
+                lambda: session.query(Datasource).filter(Datasource.analyzed == False).limit(BATCH_SIZE).all()
             )
+            
+            if not datasources:
+                break
+                
+            logger.info(f"Processing batch of {len(datasources)} datasources.")
+            
+            # Extract data to avoid threading issues with SQLAlchemy objects
+            ds_items = [(ds, ds.title, ds.abstract_or_summary) for ds in datasources]
+            
+            sem = asyncio.Semaphore(CONCURRENCY)
+            
+            async def process_one(item):
+                ds, title, abstract = item
+                async with sem:
+                    try:
+                        prompt = prompt_template.substitute(
+                            title=title, abstract=abstract or ""
+                        )
+                        
+                        # Run ask_llm in a thread
+                        response = await asyncio.to_thread(ask_llm, prompt)
+                        try:
+                            result = json.loads(response)
+                        except Exception as e:
+                            logger.error(
+                                f"Failed to parse LLM response for datasource {ds.id}: {e}"
+                            )
+                            return None
 
-            # Run ask_llm in a thread
-            response = await asyncio.to_thread(ask_llm, prompt)
-            try:
-                result = json.loads(response)
-            except Exception as e:
-                logger.error(
-                    f"Failed to parse LLM response for datasource {ds.id}: {e}\nResponse: {response}"
-                )
-                continue
+                        analysis_data = {
+                            "datasource_id": ds.id,
+                            "topics": ", ".join(result.get("topics", [])),
+                            "keywords": ", ".join(result.get("keywords", [])),
+                            "emerging_algorithms": ", ".join(result.get("emerging_algorithms", [])),
+                            "summary": result.get("summary"),
+                            "impact": result.get("impact"),
+                        }
+                        return (ds, analysis_data)
+                    except Exception as e:
+                        logger.error(f"Error processing datasource {ds.id}: {e}")
+                        return None
 
-            # Prepare data for insertion
-            analysis_data = {
-                "datasource_id": ds.id,
-                "topics": ", ".join(result.get("topics", [])),
-                "keywords": ", ".join(result.get("keywords", [])),
-                "emerging_algorithms": ", ".join(result.get("emerging_algorithms", [])),
-                "summary": result.get("summary"),
-                "impact": result.get("impact"),
-            }
-
-            # Check if analysis already exists (run in thread)
-            exists = await asyncio.to_thread(exists_analysis_by_datasource_id, ds.id)
-            if exists:
-                logger.info(
-                    f"Analysis already exists for datasource {ds.id}, skipping."
-                )
-                continue
-
-            # Insert analysis (run in thread)
-            inserted = await asyncio.to_thread(
-                insert_datasource_analysis, analysis_data
-            )
-            if inserted:
-                # Mark datasource as analyzed (run in thread)
-                def mark_analyzed():
+            results = await asyncio.gather(*(process_one(item) for item in ds_items))
+            
+            # Process results sequentially in session
+            for res in results:
+                if not res:
+                    continue
+                ds, analysis_data = res
+                
+                # Check if analysis already exists (using session)
+                if exists_analysis_by_datasource_id(ds.id, session=session):
+                    logger.info(
+                        f"Analysis already exists for datasource {ds.id}, skipping."
+                    )
                     ds.analyzed = True
-                    session.commit()
+                    continue
 
-                await asyncio.to_thread(mark_analyzed)
-                logger.info(f"Analyzed datasource {ds.id} ({ds.title})")
-            else:
-                logger.info(
-                    f"Analysis for datasource {ds.id} was not inserted (duplicate or error)."
-                )
-
-    except Exception as e:
-        logger.error(str(e))
-    finally:
-        session.close()
-    return {"analyzed": len(datasources)}
+                # Insert analysis (using session)
+                if insert_datasource_analysis(analysis_data, session=session):
+                    ds.analyzed = True
+                    total_analyzed += 1
+                    logger.info(f"Analyzed datasource {ds.id} ({ds.title})")
+                else:
+                    logger.info(
+                        f"Analysis for datasource {ds.id} was not inserted."
+                    )
+            
+            # Commit batch
+            await asyncio.to_thread(session.commit)
+            
+        except Exception as e:
+            logger.error(str(e))
+            session.rollback()
+        finally:
+            session.close()
+            gc.collect()
+            
+    return {"analyzed": total_analyzed}
 
 
 import httpx

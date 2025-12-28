@@ -62,7 +62,7 @@ def exists_source_by_url(url: str) -> bool:
         session.close()
 
 
-def insert_datasource(data: dict) -> bool:
+def insert_datasource(data: dict, session=None) -> bool:
     """Insert a datasource record if the URL is not present.
 
     `data` should contain keys: source, external_id, title, abstract_or_summary,
@@ -75,7 +75,11 @@ def insert_datasource(data: dict) -> bool:
     if not url:
         raise ValueError("`url` is required to insert a datasource")
 
-    session = SessionLocal()
+    own_session = False
+    if session is None:
+        session = SessionLocal()
+        own_session = True
+
     try:
         # quick duplicate check
         if session.query(Datasource).filter(Datasource.url == url).first():
@@ -92,26 +96,87 @@ def insert_datasource(data: dict) -> bool:
             tags=data.get("tags"),
         )
         session.add(ds)
-        session.commit()
+        if own_session:
+            session.commit()
+        else:
+            session.flush()
         return True
     except IntegrityError:
-        session.rollback()
+        if own_session:
+            session.rollback()
         return False
     finally:
+        if own_session:
+            session.close()
+
+
+def bulk_insert_datasources(datasources: list[dict]) -> int:
+    """Bulk insert datasources, skipping duplicates."""
+    if not datasources:
+        return 0
+    
+    session = SessionLocal()
+    added = 0
+    try:
+        urls = [d['url'] for d in datasources if d.get('url')]
+        if not urls:
+            return 0
+            
+        # Check existing in chunks to avoid too large query
+        existing_urls = set()
+        chunk_size = 500
+        for i in range(0, len(urls), chunk_size):
+            chunk = urls[i:i+chunk_size]
+            res = session.query(Datasource.url).filter(Datasource.url.in_(chunk)).all()
+            existing_urls.update(r[0] for r in res)
+            
+        to_insert = []
+        seen_in_batch = set()
+        
+        for d in datasources:
+            url = d.get('url')
+            if url and url not in existing_urls and url not in seen_in_batch:
+                ds = Datasource(
+                    source=d.get("source"),
+                    external_id=d.get("id") or d.get("external_id"),
+                    title=d.get("title"),
+                    abstract_or_summary=d.get("abstract_or_summary"),
+                    authors=d.get("authors"),
+                    date=d.get("date"),
+                    url=url,
+                    tags=d.get("tags"),
+                )
+                to_insert.append(ds)
+                seen_in_batch.add(url)
+        
+        if to_insert:
+            session.bulk_save_objects(to_insert)
+            session.commit()
+            added = len(to_insert)
+            
+    except Exception:
+        session.rollback()
+        raise
+    finally:
         session.close()
+    return added
 
 
 # --- Functions for DatasourceAnalysis ---
-def exists_analysis_by_datasource_id(datasource_id: int) -> bool:
+def exists_analysis_by_datasource_id(datasource_id: int, session=None) -> bool:
     """Return True if a DatasourceAnalysis with the given datasource_id exists."""
-    session = SessionLocal()
+    own_session = False
+    if session is None:
+        session = SessionLocal()
+        own_session = True
     try:
         return session.query(DatasourceAnalysis).filter(DatasourceAnalysis.datasource_id == datasource_id).first() is not None
     finally:
-        session.close()
+        if own_session:
+            session.close()
 
 
-def insert_datasource_analysis(data: dict) -> bool:
+def insert_datasource_analysis(data: dict, session=None) -> bool:
     """Insert a DatasourceAnalysis record if the datasource_id is not present.
 
     `data` should contain at least: datasource_id. Other fields are optional.
@@ -122,7 +187,11 @@ def insert_datasource_analysis(data: dict) -> bool:
     if datasource_id is None:
         raise ValueError("`datasource_id` is required to insert a DatasourceAnalysis")
 
-    session = SessionLocal()
+    own_session = False
+    if session is None:
+        session = SessionLocal()
+        own_session = True
+
     try:
         # quick duplicate check
         if session.query(DatasourceAnalysis).filter(DatasourceAnalysis.datasource_id == datasource_id).first():
@@ -138,13 +207,18 @@ def insert_datasource_analysis(data: dict) -> bool:
             exported=data.get("exported", False),
         )
         session.add(analysis)
-        session.commit()
+        if own_session:
+            session.commit()
+        else:
+            session.flush()
         return True
     except IntegrityError:
-        session.rollback()
+        if own_session:
+            session.rollback()
         return False
     finally:
-        session.close()
+        if own_session:
+            session.close()
 
 # non exported stuff
 def fetch_analysis_rows(session, num_rows):
