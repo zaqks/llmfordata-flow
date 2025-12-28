@@ -21,7 +21,7 @@ from .tasks.report_concat import append_charts_section
 from ...utils._tools import save_report_and_documents
 from ...utils._db import SessionLocal
 from pydantic import BaseModel, Field
-
+import pandas as pd
 
 # Input parameters for the flow
 
@@ -74,7 +74,6 @@ async def report_and_charts_pipeline(params: InputParams):
                 rows_dicts.append(d)
 
             
-            import pandas as pd
             df = pd.DataFrame(rows_dicts)
             if 'source' in df.columns:
                 df['source'] = df['source'].astype('category')
@@ -88,6 +87,10 @@ async def report_and_charts_pipeline(params: InputParams):
         logger.error(f"Error fetching analysis rows: {e}")
         session.close()
         raise
+    
+    if not len(analysis_rows):
+        logger.info("Nothing Interesting for now...")
+        return "Not enough data"
 
     # 3. Generate report (run in executor)
     prompt_markdown = load_template(PROMPT_MARKDOWN_PATH)
