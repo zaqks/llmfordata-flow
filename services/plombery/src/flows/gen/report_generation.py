@@ -18,7 +18,7 @@ PROMPT_MARKDOWN_PATH = os.path.join(os.path.dirname(__file__), "prompt_markdown.
 
 def fetch_analysis_rows(session):
 	"""Fetch up to 10 rows from datasource_analysis ordered by id (testing purpose)."""
-	return session.query(DatasourceAnalysis).order_by(DatasourceAnalysis.id).limit(10).all()
+	return session.query(DatasourceAnalysis).order_by(DatasourceAnalysis.id).limit(4).all()
 
 def batch_iterable(iterable, batch_size):
 	"""Yield successive batches from iterable."""
