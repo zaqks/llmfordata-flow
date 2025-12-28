@@ -199,8 +199,9 @@ def plot_source_vs_impact_heatmap(df, top_n=15):
     plt.close()
 
 # Main function to generate all charts
-def generate_all_charts():
-    df = get_analysis_df()
+def generate_all_charts(df=None):
+    if df is None:
+        df = get_analysis_df()
     plot_publications_over_time(df)
     plot_publications_by_source(df)
     plot_topic_frequency(df)

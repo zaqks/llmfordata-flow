@@ -1,90 +1,85 @@
-# Incremental report and dashboard generator using LLM
-# Processes all rows from datasource_analysis in batches, updating report and dashboard in memory, then writes to disk
+"""
+Flow: report_generation
+Tasks: chat_generation, result_generation, report_concat
+"""
+
+from plombery import task, get_logger, Trigger, register_pipeline
+from apscheduler.triggers.interval import IntervalTrigger
 
 
-import os
-from string import Template
-from ...utils._db import SessionLocal, DatasourceAnalysis
-from ...utils._ai import ask_llm
+from .report_llm import *
+from .charts_generation import *
+from .report_concat import *
 
-# Configurable batch size
-BATCH_SIZE = 10
-
-# Output file path
-REPORT_PATH = "report.md"
-
-# Prompt template path
-PROMPT_MARKDOWN_PATH = os.path.join(os.path.dirname(__file__), "prompt_markdown.txt")
-
-def fetch_analysis_rows(session):
-	"""Fetch up to 10 rows from datasource_analysis ordered by id (testing purpose)."""
-	return session.query(DatasourceAnalysis).order_by(DatasourceAnalysis.id).limit(4).all()
-
-def batch_iterable(iterable, batch_size):
-	"""Yield successive batches from iterable."""
-	total = len(iterable)
-	for i in range(0, total, batch_size):
-		yield iterable[i:i+batch_size]
-
-def load_template(path):
-	with open(path, "r", encoding="utf-8") as f:
-		return Template(f.read())
-
-def rows_to_markdown(batch_rows):
-	return "\n".join([
-		f"- **Topics:** {row.topics}\n  **Keywords:** {row.keywords}\n  **Emerging Algorithms:** {row.emerging_algorithms}\n  **Summary:** {row.summary}\n  **Impact:** {row.impact}\n  **Source:** {getattr(row, 'source', '')}\n  **Date:** {getattr(row, 'date', '')}\n  **Authors:** {getattr(row, 'authors', '')}\n  **URL:** {getattr(row, 'url', '')}"
-		for row in batch_rows
-	])
+from ...utils._db import SessionLocal
+from pydantic import BaseModel, Field
 
 
+# Input parameters for the flow
+class InputParams(BaseModel):
+    num_rows: int = Field(4, description="Number of rows to use for report generation.")
+    batch_size: int = Field(4, description="Batch size for report generation.")
 
 
-def generate_report(session, prompt_markdown):
-	"""Generate the markdown report using LLM in batches."""
-	md_report = ""
-	all_rows = fetch_analysis_rows(session)
-	total_rows = len(all_rows)
-	if not all_rows:
-		print("No analysis rows found for report.")
-		return ""
-	print(f"Total rows to process for report: {total_rows}")
-	num_batches = (total_rows + BATCH_SIZE - 1) // BATCH_SIZE
-	for i, batch in enumerate(batch_iterable(all_rows, BATCH_SIZE), 1):
-		print(f"Processing report batch {i}/{num_batches} (rows {((i-1)*BATCH_SIZE)+1}-{min(i*BATCH_SIZE, total_rows)})...")
-		rows_md = rows_to_markdown(batch)
-		report_prompt = prompt_markdown.substitute(current_report=md_report or "(empty)", rows=rows_md)
-		try:
-			md_report = ask_llm(report_prompt)
-		except Exception as e:
-			print(f"Error updating report with LLM: {e}")
-			continue
-		print(f"Finished report batch {i}/{num_batches}.")
-
-	
-	md_report = md_report.replace("```markdown\n", "")
-	md_report = md_report.replace("\n```", "")
-
-	return md_report
+# Shared data row fetcher (from report_llm)
+def get_shared_rows(num_rows):
+    session = SessionLocal()
+    try:
+        rows = fetch_analysis_rows(session, num_rows)
+        return rows
+    finally:
+        session.close()
 
 
+# Task 1: Chat Generation
+@task
+def chat_generation(params: InputParams):
+    num_rows = params.num_rows
+    batch_size = params.batch_size
+    rows = get_shared_rows(num_rows)
+    prompt_markdown = load_template(PROMPT_MARKDOWN_PATH)
+    session = SessionLocal()
+    try:
+        md_report = generate_report(session, prompt_markdown, num_rows, batch_size)
+        # Write the report to REPORT_PATH
+        with open(REPORT_PATH, "w", encoding="utf-8") as f:
+            f.write(md_report)
+        return f"Report written to {REPORT_PATH}"
+    finally:
+        session.close()
 
-def main():
-	# Load prompt template
-	prompt_markdown = load_template(PROMPT_MARKDOWN_PATH)
 
-	session = SessionLocal()
-	try:
-		# Generate report only
-		md_report = generate_report(session, prompt_markdown)
+# Task 2: Result Generation
+@task
+def result_generation(params: InputParams):
+    # num_rows = params.num_rows
+    # batch_size = params.batch_size
+    # rows = get_shared_rows(num_rows)
+    # Generate all charts using the same rows (if needed, adapt charts_generation to accept rows)
+    generate_all_charts()  # This uses all data, can be adapted
+    return "Charts generated."
 
-		# Write output to disk
-		print("Writing report to disk...")
-		with open(REPORT_PATH, "w", encoding="utf-8") as f:
-			f.write(md_report)
-		print(f"Report written to {REPORT_PATH}")
-	finally:
-		session.close()
 
-if __name__ == "__main__":
-	main()
+# Task 3: Report Concat
+@task
+def report_concat_task(params: InputParams):
+    # Use the same report path as in report_llm
+    report_path = REPORT_PATH
+    append_charts_section(report_path)
+    return f"Charts section appended to {report_path}"
 
+
+register_pipeline(
+    id="report_generation",
+    description="Generate a report and charts from analysis data.",
+    tasks=[chat_generation, result_generation, report_concat_task],
+    triggers=[
+        # Trigger(
+        #     id="hourly",
+        #     name="Hourly",
+        #     description="Run the pipeline every hour",
+        #     schedule=IntervalTrigger(hours=1),
+        # ),
+    ],
+    params=InputParams,
+)

@@ -3,7 +3,7 @@
 
 from src.flows.ingestion.ingestion_arxiv import *
 from src.flows.analysis.analysis_llm import *
-
+from src.flows.gen.report_generation import *
 
 import uvicorn
 
