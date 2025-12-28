@@ -1,84 +1,63 @@
 # Incremental report and dashboard generator using LLM
 # Processes all rows from datasource_analysis in batches, updating report and dashboard in memory, then writes to disk
 
-
-import os
+import gc
 from string import Template
-from ....utils._db import SessionLocal, DatasourceAnalysis
 from ....utils._ai import ask_llm
 
-
-# Configurable number of rows to use for report generation
-NUM_ROWS_TO_USE = 4  # Set this to the number of rows you want to process
-
-# Configurable chunk (batch) size for processing the rows
-BATCH_SIZE = 5  # Set this to the chunk size you want to use
 
 # Output file path
 REPORT_PATH = "report.md"
 
 # Prompt template path
-PROMPT_MARKDOWN_PATH =  "src/flows/gen/prompt_markdown.txt"
+PROMPT_MARKDOWN_PATH = "src/flows/gen/prompt_markdown.txt"
 
 
 def batch_iterable(iterable, batch_size):
-	"""Yield successive batches from iterable."""
-	total = len(iterable)
-	for i in range(0, total, batch_size):
-		yield iterable[i:i+batch_size]
+    """Yield successive batches from iterable."""
+    total = len(iterable)
+    for i in range(0, total, batch_size):
+        yield iterable[i:i+batch_size]
+
 
 def load_template(path):
-	with open(path, "r", encoding="utf-8") as f:
-		return Template(f.read())
+    with open(path, "r", encoding="utf-8") as f:
+        return Template(f.read())
+
 
 def rows_to_markdown(batch_rows):
-	return "\n".join([
-		f"- **Topics:** {row.topics}\n  **Keywords:** {row.keywords}\n  **Emerging Algorithms:** {row.emerging_algorithms}\n  **Summary:** {row.summary}\n  **Impact:** {row.impact}\n  **Source:** {getattr(row, 'source', '')}\n  **Date:** {getattr(row, 'date', '')}\n  **Authors:** {getattr(row, 'authors', '')}\n  **URL:** {getattr(row, 'url', '')}"
-		for row in batch_rows
-	])
+    return "\n".join([
+        f"- **Topics:** {row.topics}\n  **Keywords:** {row.keywords}\n  **Emerging Algorithms:** {row.emerging_algorithms}\n  **Summary:** {row.summary}\n  **Impact:** {row.impact}\n  **Source:** {getattr(row, 'source', '')}\n  **Date:** {getattr(row, 'date', '')}\n  **Authors:** {getattr(row, 'authors', '')}\n  **URL:** {getattr(row, 'url', '')}"
+        for row in batch_rows
+    ])
+
 
 def generate_report(analysis_rows, prompt_markdown, batch_size):
-	"""Generate the markdown report using LLM in batches."""
-	md_report = ""
-	total_rows = len(analysis_rows)
-	print(f"Total rows to process for report: {total_rows}")
-	num_batches = (total_rows + batch_size - 1) // batch_size
-	for i, batch in enumerate(batch_iterable(analysis_rows, batch_size), 1):
-		print(f"Processing report batch {i}/{num_batches} (rows {((i-1)*batch_size)+1}-{min(i*batch_size, total_rows)})...")
-		rows_md = rows_to_markdown(batch)
-		report_prompt = prompt_markdown.substitute(current_report=md_report or "(empty)", rows=rows_md)
-		try:
-			md_report = ask_llm(report_prompt)
-		except Exception as e:
-			print(f"Error updating report with LLM: {e}")
-			continue
-		print(f"Finished report batch {i}/{num_batches}.")
+    """Generate the markdown report using LLM in batches."""
+    md_report = ""
+    total_rows = len(analysis_rows)
+    print(f"Total rows to process for report: {total_rows}")
+    num_batches = (total_rows + batch_size - 1) // batch_size
+    for i, batch in enumerate(batch_iterable(analysis_rows, batch_size), 1):
+        print(f"Processing report batch {i}/{num_batches} (rows {((i-1)*batch_size)+1}-{min(i*batch_size, total_rows)})...")
+        rows_md = rows_to_markdown(batch)
+        report_prompt = prompt_markdown.substitute(current_report=md_report or "(empty)", rows=rows_md)
+        
+        # Free batch data immediately
+        del rows_md
+        
+        try:
+            md_report = ask_llm(report_prompt)
+        except Exception as e:
+            print(f"Error updating report with LLM: {e}")
+            continue
+        finally:
+            del report_prompt
+            gc.collect()
+        
+        print(f"Finished report batch {i}/{num_batches}.")
 
-	md_report = md_report.replace("```markdown\n", "")
-	md_report = md_report.replace("\n```", "")
+    md_report = md_report.replace("```markdown\n", "")
+    md_report = md_report.replace("\n```", "")
 
-	return md_report
-
-
-
-
-def main():
-	# Load prompt template
-	prompt_markdown = load_template(PROMPT_MARKDOWN_PATH)
-
-	session = SessionLocal()
-	try:
-		# Generate report only
-		md_report = generate_report(session, prompt_markdown, NUM_ROWS_TO_USE, BATCH_SIZE)
-
-		# Write output to disk
-		print("Writing report to disk...")
-		with open(REPORT_PATH, "w", encoding="utf-8") as f:
-			f.write(md_report)
-		print(f"Report written to {REPORT_PATH}")
-	finally:
-		session.close()
-
-if __name__ == "__main__":
-	main()
-
+    return md_report

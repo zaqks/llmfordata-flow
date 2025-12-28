@@ -97,6 +97,10 @@ async def main(params: InputParams | None = None):
         data_list.append(data)
         extracted += 1
 
+    # Free feed memory immediately after extraction
+    del feed
+    gc.collect()
+
     added = 0
     if data_list:
         try:
@@ -104,13 +108,12 @@ async def main(params: InputParams | None = None):
             added = await asyncio.to_thread(bulk_insert_datasources, data_list)
         except Exception as e:
             logger.error(f"Error in bulk insert: {e}")
+        finally:
+            del data_list
+            gc.collect()
 
     logger.info("Extracted %s rows from arXiv", extracted)
     logger.info("Inserted %s new rows into DB", added)
-    
-    del feed
-    del data_list
-    gc.collect()
     
     return {"extracted": extracted, "inserted": added}
 

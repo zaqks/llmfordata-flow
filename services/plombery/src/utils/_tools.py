@@ -12,6 +12,7 @@ def save_report_and_documents(output_dir, session=None):
         report_id (int): The ID of the created Reports entry.
     """
     import os
+    import gc
     from datetime import datetime
 
     own_session = False
@@ -45,12 +46,15 @@ def save_report_and_documents(output_dir, session=None):
                 file_bytes = f.read()
             doc = Documents(name=fname, file=file_bytes, report_id=report.id)
             session.add(doc)
+            del file_bytes
+            gc.collect()
 
         session.commit()
         return report.id
     finally:
         if own_session:
             session.close()
+            gc.collect()
 
 
 def exists_source_by_url(url: str) -> bool:
@@ -112,6 +116,8 @@ def insert_datasource(data: dict, session=None) -> bool:
 
 def bulk_insert_datasources(datasources: list[dict]) -> int:
     """Bulk insert datasources, skipping duplicates."""
+    import gc
+    
     if not datasources:
         return 0
     
@@ -129,6 +135,8 @@ def bulk_insert_datasources(datasources: list[dict]) -> int:
             chunk = urls[i:i+chunk_size]
             res = session.query(Datasource.url).filter(Datasource.url.in_(chunk)).all()
             existing_urls.update(r[0] for r in res)
+            del res, chunk
+            gc.collect()
             
         to_insert = []
         seen_in_batch = set()
@@ -149,16 +157,22 @@ def bulk_insert_datasources(datasources: list[dict]) -> int:
                 to_insert.append(ds)
                 seen_in_batch.add(url)
         
+        del existing_urls, seen_in_batch, urls
+        gc.collect()
+        
         if to_insert:
             session.bulk_save_objects(to_insert)
             session.commit()
             added = len(to_insert)
+            del to_insert
+            gc.collect()
             
     except Exception:
         session.rollback()
         raise
     finally:
         session.close()
+        gc.collect()
     return added
 
 

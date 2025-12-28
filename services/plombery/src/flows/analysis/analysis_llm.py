@@ -50,12 +50,12 @@ async def main():
             logger.info(f"Processing batch of {len(datasources)} datasources.")
             
             # Extract data to avoid threading issues with SQLAlchemy objects
-            ds_items = [(ds, ds.title, ds.abstract_or_summary) for ds in datasources]
+            ds_items = [(ds.id, ds.title, ds.abstract_or_summary) for ds in datasources]
             
             sem = asyncio.Semaphore(CONCURRENCY)
             
             async def process_one(item):
-                ds, title, abstract = item
+                ds_id, title, abstract = item
                 async with sem:
                     try:
                         prompt = prompt_template.substitute(
@@ -68,35 +68,43 @@ async def main():
                             result = json.loads(response)
                         except Exception as e:
                             logger.error(
-                                f"Failed to parse LLM response for datasource {ds.id}: {e}"
+                                f"Failed to parse LLM response for datasource {ds_id}: {e}"
                             )
                             return None
 
                         analysis_data = {
-                            "datasource_id": ds.id,
+                            "datasource_id": ds_id,
                             "topics": ", ".join(result.get("topics", [])),
                             "keywords": ", ".join(result.get("keywords", [])),
                             "emerging_algorithms": ", ".join(result.get("emerging_algorithms", [])),
                             "summary": result.get("summary"),
                             "impact": result.get("impact"),
                         }
-                        return (ds, analysis_data)
+                        return (ds_id, analysis_data)
                     except Exception as e:
-                        logger.error(f"Error processing datasource {ds.id}: {e}")
+                        logger.error(f"Error processing datasource {ds_id}: {e}")
                         return None
 
             results = await asyncio.gather(*(process_one(item) for item in ds_items))
+            
+            # Free items memory
+            del ds_items
             
             # Process results sequentially in session
             for res in results:
                 if not res:
                     continue
-                ds, analysis_data = res
+                ds_id, analysis_data = res
+                
+                # Find the datasource object by id
+                ds = session.query(Datasource).filter(Datasource.id == ds_id).first()
+                if not ds:
+                    continue
                 
                 # Check if analysis already exists (using session)
-                if exists_analysis_by_datasource_id(ds.id, session=session):
+                if exists_analysis_by_datasource_id(ds_id, session=session):
                     logger.info(
-                        f"Analysis already exists for datasource {ds.id}, skipping."
+                        f"Analysis already exists for datasource {ds_id}, skipping."
                     )
                     ds.analyzed = True
                     continue
@@ -105,11 +113,14 @@ async def main():
                 if insert_datasource_analysis(analysis_data, session=session):
                     ds.analyzed = True
                     total_analyzed += 1
-                    logger.info(f"Analyzed datasource {ds.id} ({ds.title})")
+                    logger.info(f"Analyzed datasource {ds_id}")
                 else:
                     logger.info(
-                        f"Analysis for datasource {ds.id} was not inserted."
+                        f"Analysis for datasource {ds_id} was not inserted."
                     )
+            
+            # Free results memory
+            del results
             
             # Commit batch
             await asyncio.to_thread(session.commit)

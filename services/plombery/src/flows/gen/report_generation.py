@@ -76,10 +76,17 @@ async def report_and_charts_pipeline(params: InputParams):
             analysis_rows = [r[0] for r in results]
             rows_dicts = []
             for analysis, source in results:
-                d = analysis.__dict__.copy()
-                d.pop('_sa_instance_state', None)
-                d['source'] = source.source
-                d['date'] = source.date
+                d = {
+                    'id': analysis.id,
+                    'datasource_id': analysis.datasource_id,
+                    'topics': analysis.topics,
+                    'keywords': analysis.keywords,
+                    'emerging_algorithms': analysis.emerging_algorithms,
+                    'summary': analysis.summary,
+                    'impact': analysis.impact,
+                    'source': source.source,
+                    'date': source.date
+                }
                 rows_dicts.append(d)
 
             df = pd.DataFrame(rows_dicts)
@@ -87,6 +94,12 @@ async def report_and_charts_pipeline(params: InputParams):
                 df['source'] = df['source'].astype('category')
             if 'date' in df.columns:
                 df['date'] = pd.to_datetime(df['date'], errors='coerce')
+            
+            # Free intermediate data
+            del results
+            del rows_dicts
+            gc.collect()
+            
             return analysis_rows, df
         
         analysis_rows, df = await loop.run_in_executor(None, fetch_rows)
@@ -114,6 +127,8 @@ async def report_and_charts_pipeline(params: InputParams):
                 f.write(md_report)
         await loop.run_in_executor(None, write_report)
         logger.info(f"Report written to {report_path}")
+        del md_report
+        gc.collect()
     except Exception as e:
         logger.error(f"Error generating report: {e}")
         session.close()
@@ -154,13 +169,14 @@ async def report_and_charts_pipeline(params: InputParams):
     await loop.run_in_executor(None, save_report_and_documents, output_dir, session)
     logger.info(f"Report and charts saved to db")
 
-
     # Mark used rows as exported and commit
     for row in analysis_rows:
         row.exported = True
     session.commit()
 
+    del analysis_rows
     session.close()
+    
     await loop.run_in_executor(None, shutil.rmtree, output_dir)
     logger.info(f"Cleaned")
     gc.collect()
