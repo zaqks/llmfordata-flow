@@ -1,7 +1,16 @@
 import os
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, Text, Boolean, ForeignKey, DateTime
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Text,
+    Boolean,
+    ForeignKey,
+    DateTime,
+    LargeBinary,
+)
 from sqlalchemy import create_engine
 
 from sqlalchemy.ext.declarative import declarative_base
@@ -38,6 +47,25 @@ class DatasourceAnalysis(Base):
     impact = Column(String, nullable=True)  # optional: low/medium/high
     created_at = Column(DateTime, default=datetime.utcnow)
     exported = Column(Boolean, default=False, nullable=False)
+
+
+## files
+
+
+# Reports model
+class Reports(Base):
+    __tablename__ = "reports"
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+# Documents model
+class Documents(Base):
+    __tablename__ = "documents"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    file = Column(LargeBinary, nullable=False)
+    result_id = Column(Integer, ForeignKey("reports.id"), nullable=True)
 
 
 # Database connection
