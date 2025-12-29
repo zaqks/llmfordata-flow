@@ -181,16 +181,18 @@ function setupDownloadButton() {
 </body>
 </html>`;
 
-            // Create blob and download
-            const blob = new Blob([fullHtml], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `report_${currentReportId}_charts.html`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            // Create a new window for printing
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(fullHtml);
+            printWindow.document.close();
+            
+            // Wait for content to load then print
+            printWindow.onload = function() {
+                printWindow.focus();
+                printWindow.print();
+                // Optional: close window after print
+                // printWindow.close();
+            };
         }
     });
 }
