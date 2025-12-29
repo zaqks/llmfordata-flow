@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Executive</title>
+    <link rel="stylesheet" href="/static/executive/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Left Panel: Reports List -->
+        <div class="left-panel">
+            <h2>Reports</h2>
+            <div id="reports-list"></div>
+        </div>
+
+        <!-- Right Panel: Report Content -->
+        <div class="right-panel">
+            <!-- Top: Rendered Markdown -->
+            <div class="markdown-section">
+                <h2>Report Content</h2>
+                <button id="download-btn" style="display: none;">Download Report with Charts</button>
+                <div id="markdown-content"></div>
+            </div>
+
+            <!-- Bottom: Charts Gallery -->
+            <div class="charts-section">
+                <h2>Charts</h2>
+                <div id="charts-gallery"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/executive/script.js"></script>
+</body>
+</html>

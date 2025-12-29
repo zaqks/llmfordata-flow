@@ -1,0 +1,70 @@
+body {
+    background: #fff;
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    display: flex;
+    height: 100vh;
+}
+
+.left-panel {
+    width: 20%;
+    border-right: 1px solid #ccc;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.right-panel {
+    width: 80%;
+    display: flex;
+    overflow: hidden;
+}
+
+.markdown-section {
+    width: 50%;
+    padding: 20px;
+    overflow-y: auto;
+    border-right: 1px solid #ccc;
+}
+
+.charts-section {
+    width: 50%;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.report-item {
+    padding: 10px;
+    margin: 5px 0;
+    border: 1px solid #ddd;
+    cursor: pointer;
+}
+
+.report-item:hover {
+    background: #f0f0f0;
+}
+
+#charts-gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.chart-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-item img {
+    max-width: 400px;
+    height: auto;
+}
+
+.chart-item p {
+    margin: 5px 0;
+    font-weight: bold;
+}
+
