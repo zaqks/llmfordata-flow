@@ -75,3 +75,5 @@ async def download_document(document_id: int, db: Session = Depends(get_db)):
         headers={"Content-Disposition": f"attachment; filename={document.name}"}
     )
 
+
+

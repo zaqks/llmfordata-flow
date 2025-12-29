@@ -4,6 +4,13 @@ let reportChartsDoc = null;
 
 // Load reports on page load
 document.addEventListener('DOMContentLoaded', () => {
+    // Configure marked to use GFM (GitHub Flavored Markdown) which includes tables
+    marked.setOptions({
+        gfm: true,
+        breaks: true,
+        tables: true
+    });
+    
     loadReports();
     setupDownloadButton();
 });
@@ -106,19 +113,80 @@ function setupDownloadButton() {
     const downloadBtn = document.getElementById('download-btn');
     downloadBtn.addEventListener('click', () => {
         if (reportChartsDoc) {
-            // Decode base64 and create blob
-            const binaryString = atob(reportChartsDoc.file);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            const blob = new Blob([bytes], { type: 'text/markdown' });
+            // Decode base64 and get markdown text
+            const markdownText = atob(reportChartsDoc.file);
             
-            // Create download link
+            // Convert markdown to HTML
+            const htmlContent = marked.parse(markdownText);
+            
+            // Create full HTML document with styling
+            const fullHtml = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report ${currentReportId} Charts</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #24292e;
+        }
+        img { 
+            max-width: 100%; 
+            height: auto; 
+            display: block; 
+            margin: 20px auto; 
+        }
+        table { 
+            border-collapse: collapse; 
+            width: 100%; 
+            margin: 20px 0; 
+        }
+        th, td { 
+            border: 1px solid #dfe2e5; 
+            padding: 6px 13px; 
+        }
+        th { 
+            background-color: #f6f8fa; 
+            font-weight: bold; 
+            text-align: left;
+        }
+        tr:nth-child(2n) { 
+            background-color: #f6f8fa; 
+        }
+        code {
+            background-color: rgba(27,31,35,.05);
+            border-radius: 3px;
+            font-size: 85%;
+            margin: 0;
+            padding: .2em .4em;
+        }
+        pre {
+            background-color: #f6f8fa;
+            border-radius: 3px;
+            font-size: 85%;
+            line-height: 1.45;
+            overflow: auto;
+            padding: 16px;
+        }
+    </style>
+</head>
+<body>
+    ${htmlContent}
+</body>
+</html>`;
+
+            // Create blob and download
+            const blob = new Blob([fullHtml], { type: 'text/html' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'report_charts.md';
+            a.download = `report_${currentReportId}_charts.html`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
