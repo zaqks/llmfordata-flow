@@ -24,11 +24,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application
 COPY . .
 
-# Make sure the entry script is executable
-RUN chmod +x run.sh
-
 # Expose only the port you actually use (adjust if needed)
 EXPOSE 8000
 
 # Run the app
-CMD ["./run.sh"]
+CMD ["python3", "main.py"]
