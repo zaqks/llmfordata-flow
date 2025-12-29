@@ -51,23 +51,37 @@
                     <div class="card markdown-card">
                         <div class="card-header">
                             <h2 class="card-title">Report Content</h2>
-                            <button id="download-btn" class="action-btn" style="display: none;">Download Report</button>
+                            <div class="header-actions">
+                                <button id="show-charts-btn" class="action-btn" style="display: none;">Show Charts</button>
+                                <button id="download-btn" class="action-btn" style="display: none;">Download Report</button>
+                            </div>
                         </div>
                         <div id="markdown-content" class="markdown-body">
                             <p class="placeholder-text">Select a report to view details.</p>
                         </div>
                     </div>
-
-                    <!-- Bottom: Charts Gallery -->
-                    <div class="card charts-card">
-                        <h2 class="card-title">Charts</h2>
-                        <div id="charts-gallery" class="gallery-container">
-                            <p class="placeholder-text">No charts to display.</p>
-                        </div>
-                    </div>
                 </div>
             </div>
         </main>
+    </div>
+
+    <!-- Charts Gallery Modal -->
+    <div id="charts-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Charts Gallery</h2>
+                <button class="close-modal-btn">&times;</button>
+            </div>
+            <div id="charts-gallery" class="gallery-container"></div>
+        </div>
+    </div>
+
+    <!-- Zoomed Chart Modal -->
+    <div id="zoom-modal" class="modal hidden">
+        <div class="modal-content zoom-content">
+            <span class="close-zoom-btn">&times;</span>
+            <img id="zoomed-chart-img" src="" alt="Zoomed Chart">
+        </div>
     </div>
 
     <script src="/static/executive/script.js"></script>

@@ -1,6 +1,7 @@
 // Global state
 let currentReportId = null;
 let reportChartsDoc = null;
+let currentPngImages = [];
 
 // Load reports on page load
 document.addEventListener('DOMContentLoaded', () => {
@@ -14,7 +15,72 @@ document.addEventListener('DOMContentLoaded', () => {
     loadReports();
     setupDownloadButton();
     setupThemeToggle();
+    setupModals();
 });
+
+function setupModals() {
+    const chartsModal = document.getElementById('charts-modal');
+    const zoomModal = document.getElementById('zoom-modal');
+    const showChartsBtn = document.getElementById('show-charts-btn');
+    const closeChartsBtn = document.querySelector('.close-modal-btn');
+    const closeZoomBtn = document.querySelector('.close-zoom-btn');
+
+    showChartsBtn.addEventListener('click', () => {
+        renderGallery();
+        chartsModal.classList.remove('hidden');
+    });
+
+    closeChartsBtn.addEventListener('click', () => {
+        chartsModal.classList.add('hidden');
+    });
+
+    closeZoomBtn.addEventListener('click', () => {
+        zoomModal.classList.add('hidden');
+    });
+
+    // Close on click outside
+    window.addEventListener('click', (e) => {
+        if (e.target === chartsModal) {
+            chartsModal.classList.add('hidden');
+        }
+        if (e.target === zoomModal) {
+            zoomModal.classList.add('hidden');
+        }
+    });
+}
+
+function renderGallery() {
+    const gallery = document.getElementById('charts-gallery');
+    gallery.innerHTML = '';
+    
+    if (currentPngImages.length > 0) {
+        currentPngImages.forEach(img => {
+            const item = document.createElement('div');
+            item.className = 'chart-item';
+            item.onclick = () => openZoom(img);
+            
+            const label = document.createElement('p');
+            label.textContent = img.name;
+            
+            const image = document.createElement('img');
+            image.src = `data:image/png;base64,${img.file}`;
+            image.alt = img.name;
+            
+            item.appendChild(label);
+            item.appendChild(image);
+            gallery.appendChild(item);
+        });
+    } else {
+        gallery.innerHTML = '<p class="placeholder-text">No charts available</p>';
+    }
+}
+
+function openZoom(imgData) {
+    const zoomModal = document.getElementById('zoom-modal');
+    const zoomedImg = document.getElementById('zoomed-chart-img');
+    zoomedImg.src = `data:image/png;base64,${imgData.file}`;
+    zoomModal.classList.remove('hidden');
+}
 
 function setupThemeToggle() {
     const themeToggleBtn = document.getElementById('theme-toggle');
@@ -89,6 +155,7 @@ async function loadReport(reportId) {
         
         // Store report_charts.md for download
         reportChartsDoc = reportChartsMd;
+        currentPngImages = pngImages;
         
         // Render markdown content
         if (reportMd) {
@@ -99,36 +166,20 @@ async function loadReport(reportId) {
             document.getElementById('markdown-content').innerHTML = '<p>No report content available</p>';
         }
         
-        // Display charts
-        const chartsGallery = document.getElementById('charts-gallery');
-        chartsGallery.innerHTML = '';
-        
-        if (pngImages.length > 0) {
-            pngImages.forEach(img => {
-                const chartContainer = document.createElement('div');
-                chartContainer.className = 'chart-item';
-                
-                const chartLabel = document.createElement('p');
-                chartLabel.textContent = img.name;
-                
-                const chartImage = document.createElement('img');
-                chartImage.src = `data:image/png;base64,${img.file}`;
-                chartImage.alt = img.name;
-                
-                chartContainer.appendChild(chartLabel);
-                chartContainer.appendChild(chartImage);
-                chartsGallery.appendChild(chartContainer);
-            });
-        } else {
-            chartsGallery.innerHTML = '<p>No charts available</p>';
-        }
-        
-        // Show/hide download button
+        // Show/hide buttons
         const downloadBtn = document.getElementById('download-btn');
+        const showChartsBtn = document.getElementById('show-charts-btn');
+        
         if (reportChartsMd) {
             downloadBtn.style.display = 'block';
         } else {
             downloadBtn.style.display = 'none';
+        }
+
+        if (pngImages.length > 0) {
+            showChartsBtn.style.display = 'block';
+        } else {
+            showChartsBtn.style.display = 'none';
         }
         
     } catch (error) {
