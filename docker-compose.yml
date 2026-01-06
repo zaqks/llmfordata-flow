@@ -2,6 +2,10 @@ services:
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     env_file:
       - .env
     environment:
@@ -22,6 +26,10 @@ services:
     build:
       context: ./services/plombery
       dockerfile: Dockerfile
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     depends_on:
       postgres:
         condition: service_started
@@ -36,6 +44,10 @@ services:
     build:
       context: ./services/api
       dockerfile: Dockerfile
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     depends_on:
       postgres:
         condition: service_started
