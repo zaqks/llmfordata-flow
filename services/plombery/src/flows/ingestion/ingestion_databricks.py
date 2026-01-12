@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from typing import List
 from pydantic import BaseModel, Field, validator
 
-from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 from plombery import task, get_logger, Trigger, register_pipeline
 
 
@@ -204,9 +204,9 @@ register_pipeline(
     triggers=[
         Trigger(
             id="daily",
-            name="Daily",
-            description="Run the pipeline every 24 hours",
-            schedule=IntervalTrigger(hours=24),
+            name="Daily at 1 AM",
+            description="Run the pipeline every day at 1:00 AM",
+            schedule=CronTrigger(hour=1),
         ),
     ],
     params=InputParams,

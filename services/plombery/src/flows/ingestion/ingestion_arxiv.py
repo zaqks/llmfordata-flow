@@ -7,7 +7,7 @@ from ...utils._tools import bulk_insert_datasources
 from typing import List
 from pydantic import BaseModel, Field
 
-from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 from plombery import task, get_logger, Trigger, register_pipeline
 from pydantic import BaseModel, Field, validator
 
@@ -150,10 +150,10 @@ register_pipeline(
     tasks=[main, trigger_llm_analysis],
     triggers=[
         Trigger(
-            id="hourly",
-            name="Hourly",
-            description="Run the pipeline every hour",
-            schedule=IntervalTrigger(hours=12),
+            id="daily",
+            name="Daily at midnight",
+            description="Run the pipeline every day at 12:00 AM",
+            schedule=CronTrigger(hour=0),
         ),
     ],
     params=InputParams,
