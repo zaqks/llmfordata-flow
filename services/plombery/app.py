@@ -6,9 +6,9 @@ from src.flows.ingestion.ingestion_huggingface import *
 from src.flows.ingestion.ingestion_nvidia import *
 
 from src.flows.ingestion.ingestion_databricks import *
-from src.flows.ingestion.ingestion_paperswithcode import *
-from src.flows.ingestion.ingestion_semanticscholar import *
-from src.flows.ingestion.ingestion_snowflake import *
+# from src.flows.ingestion.ingestion_paperswithcode import *
+# from src.flows.ingestion.ingestion_semanticscholar import *
+from src.flows.ingestion.ingestion_snowflake import * # empty data
 
 from src.flows.analysis.analysis_llm import *
 from src.flows.gen.report_generation import *
