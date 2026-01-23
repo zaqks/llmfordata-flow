@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, Response
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List
 import base64
 
@@ -87,5 +88,35 @@ async def download_document(document_id: int, db: Session = Depends(get_db)):
         headers={"Content-Disposition": f"attachment; filename={document.name}"}
     )
 
+# KPI Endpoints
 
+@app.get("/api/anal_length")
+async def anal_length(db: Session = Depends(get_db)):
+    """Get the difference in days between the latest and oldest report"""
+    min_date = db.query(func.min(Reports.created_at)).scalar()
+    max_date = db.query(func.max(Reports.created_at)).scalar()
+    if min_date and max_date:
+        diff = (max_date - min_date).days
+        return {"value": diff}
+    else:
+        return {"value": 0}
 
+@app.get("/api/n_discos")
+async def n_discos(db: Session = Depends(get_db)):
+    """Get the number of reports"""
+    count = db.query(Reports).count()
+    return {"value": count}
+
+@app.get("/api/n_alerts")
+async def n_alerts(db: Session = Depends(get_db)):
+    """Get the number of reports"""
+    count = db.query(Reports).count()
+    return {"value": count}
+
+@app.get("/api/n_alerts_w")
+async def n_alerts_w(db: Session = Depends(get_db)):
+    """Get the number of reports divided by 7"""
+    count = db.query(Reports).count()
+    value = count / 7 if count > 0 else 0
+    value = round(value, 2)
+    return {"value": value}
