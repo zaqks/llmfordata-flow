@@ -201,6 +201,10 @@ body {
 
 /* Mobile Responsive */
 @media (max-width: 1024px) {
+    body {
+        padding-bottom: 2.5rem;
+    }
+
     .app-header {
         padding: 1rem 1.5rem;
     }
