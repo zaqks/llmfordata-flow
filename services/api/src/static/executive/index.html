@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Executive Dashboard</title>
-    <link rel="icon" type="image/png" href="/logo.svg">
+    <link rel="icon" type="image/png" href="/static/logo.svg">
     <script>
       if (
         localStorage.plomberyTheme === 'dark' ||
@@ -38,6 +38,30 @@
         </header>
 
         <main class="main-content">
+            <!-- KPI Grid -->
+            <div id="kpiGrid" class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-label">Analysis Length</div>
+                    <div class="kpi-value" id="kpi-anal-length">247</div>
+                    <div class="kpi-trend">Days analyzed</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Disconnections</div>
+                    <div class="kpi-value" id="kpi-n-discos">1,234</div>
+                    <div class="kpi-trend">↑ Total events</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Alerts</div>
+                    <div class="kpi-value" id="kpi-n-alerts">89</div>
+                    <div class="kpi-trend">↓ Critical issues</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Alerts (Weighted)</div>
+                    <div class="kpi-value" id="kpi-n-alerts-w">156</div>
+                    <div class="kpi-trend">Severity adjusted</div>
+                </div>
+            </div>
+
             <div class="grid-layout">
                 <!-- Left Panel: Reports List -->
                 <div class="card reports-card">

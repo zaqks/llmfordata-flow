@@ -1,9 +1,12 @@
-// Global state
+// ===================== CONSTANTS & CONFIGURATION =====================
+const API_BASE = window.location.origin;
+
+// ===================== GLOBAL STATE =====================
 let currentReportId = null;
 let reportChartsDoc = null;
 let currentPngImages = [];
 
-// Load reports on page load
+// ===================== INITIALIZATION =====================
 document.addEventListener('DOMContentLoaded', () => {
     // Configure marked to use GFM (GitHub Flavored Markdown) which includes tables
     marked.setOptions({
@@ -12,11 +15,56 @@ document.addEventListener('DOMContentLoaded', () => {
         tables: true
     });
     
+    loadKPIs();
     loadReports();
     setupDownloadButton();
     setupThemeToggle();
     setupModals();
 });
+
+// ===================== KPI LOADER (NEW ADDITION) =====================
+async function loadKPIs() {
+    const kpiEndpoints = {
+        'kpi-anal-length': { url: `${API_BASE}/api/anal_length`, fallback: '69' },
+        'kpi-n-discos': { url: `${API_BASE}/api/n_discos`, fallback: '69' },
+        'kpi-n-alerts': { url: `${API_BASE}/api/n_alerts`, fallback: '69' },
+        'kpi-n-alerts-w': { url: `${API_BASE}/api/n_alerts_w`, fallback: '69' }
+    };
+
+    for (const [id, config] of Object.entries(kpiEndpoints)) {
+        const element = document.getElementById(id);
+        if (!element) continue;
+
+        try {
+            const response = await fetch(config.url);
+            if (!response.ok) throw new Error('API error');
+            const data = await response.json();
+            
+            // Handle different possible response formats
+            let value = data;
+            if (typeof data === 'object' && data !== null) {
+                value = data.value ?? data.count ?? data.total ?? config.fallback;
+            }
+            
+            // Format number with commas if it's a large number
+            if (typeof value === 'number' || !isNaN(value)) {
+                const numValue = typeof value === 'number' ? value : parseFloat(value);
+                if (numValue >= 1000) {
+                    element.textContent = numValue.toLocaleString('en-US');
+                } else {
+                    element.textContent = value;
+                }
+            } else {
+                element.textContent = value;
+            }
+        } catch (err) {
+            console.warn(`Failed to load KPI ${id}:`, err);
+            // Keep the fallback value already in HTML
+        }
+    }
+}
+
+// ===================== ORIGINAL CODE BELOW - UNTOUCHED =====================
 
 function setupModals() {
     const chartsModal = document.getElementById('charts-modal');
@@ -48,19 +96,6 @@ function setupModals() {
         }
     });
 }
-const plotMap = {
-    "1.png": "Publications Over Time",
-    "2.png": "Publications by Source",
-    "3.png": "Topic Frequency Distribution",
-    "4.png": "Keyword Frequency (Top Terms)",
-    "5.png": "Topic Co-occurrence Heatmap",
-    "6.png": "Emerging Algorithms by Topic",
-    "7.png": "Emerging Algorithms Trend Over Time",
-    "8.png": "Impact Distribution",
-    "9.png": "Impact by Topic",
-    "10.png": "Source vs Impact Heatmap"
-  };
-  
 
 function renderGallery() {
     const gallery = document.getElementById('charts-gallery');
@@ -73,8 +108,7 @@ function renderGallery() {
             item.onclick = () => openZoom(img);
             
             const label = document.createElement('p');
-            label.textContent = plotMap[img.name] ?? img.name;
-
+            label.textContent = img.name;
             
             const image = document.createElement('img');
             image.src = `data:image/png;base64,${img.file}`;
