@@ -181,7 +181,7 @@ async def trigger_llm_analysis():
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f'{os.getenv("HOST")}/api/pipelines/datasource_analysis_llm/run',
+                f'{os.getenv("HOST2")}/api/pipelines/datasource_analysis_llm/run',
                 json={"params": {}},
                 timeout=10,
             )
