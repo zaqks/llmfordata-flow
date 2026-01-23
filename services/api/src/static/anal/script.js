@@ -1,6 +1,6 @@
 const loader = document.getElementById('loader');
 
-fetch('/host-url')
+fetch('/anal-url')
   .then(response => response.json())
   .then(data => {
     if (data.url) {

@@ -22,9 +22,13 @@ async def root():
     return FileResponse("src/static/auth/index.html")
 
 # /it: show the iframe page
-@app.get("/IT")
-async def it():
-    return FileResponse("src/static/it/index.html")
+@app.get("/SRC")
+async def src():
+    return FileResponse("src/static/src/index.html")
+
+@app.get("/ANAL")
+async def anal():
+    return FileResponse("src/static/anal/index.html")
 
 # /executive: show an empty page
 @app.get("/executive")
@@ -33,11 +37,19 @@ async def executive():
 
 # Endpoint to expose the HOST environment variable as JSON
 import os
-@app.get("/host-url")
-async def host_url():
-    return {"url": os.environ.get("HOST", "")}
-    # return {"url": "https://occupational-gwenore-vt-project-054c82e6.koyeb.app"}
 
+#@app.get("/host-url")
+#async def host_url():
+#    return {"url": os.environ.get("HOST", "")}
+#    # return {"url": "https://occupational-gwenore-vt-project-054c82e6.koyeb.app"}
+
+@app.get("/src-url")
+async def src_url():
+    return {"url": os.environ.get("HOST1", "")}
+
+@app.get("/anal-url")
+async def anal_url():
+    return {"url": os.environ.get("HOST2", "")}
 
 # API Endpoints for Executive Dashboard
 
