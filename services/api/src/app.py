@@ -35,8 +35,8 @@ async def executive():
 import os
 @app.get("/host-url")
 async def host_url():
-    # return {"url": os.environ.get("HOST", "")}
-    return {"url": "https://occupational-gwenore-vt-project-054c82e6.koyeb.app"}
+    return {"url": os.environ.get("HOST", "")}
+    # return {"url": "https://occupational-gwenore-vt-project-054c82e6.koyeb.app"}
 
 
 # API Endpoints for Executive Dashboard
