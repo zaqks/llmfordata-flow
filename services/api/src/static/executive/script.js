@@ -48,6 +48,19 @@ function setupModals() {
         }
     });
 }
+const plotMap = {
+    "1.png": "Publications Over Time",
+    "2.png": "Publications by Source",
+    "3.png": "Topic Frequency Distribution",
+    "4.png": "Keyword Frequency (Top Terms)",
+    "5.png": "Topic Co-occurrence Heatmap",
+    "6.png": "Emerging Algorithms by Topic",
+    "7.png": "Emerging Algorithms Trend Over Time",
+    "8.png": "Impact Distribution",
+    "9.png": "Impact by Topic",
+    "10.png": "Source vs Impact Heatmap"
+  };
+  
 
 function renderGallery() {
     const gallery = document.getElementById('charts-gallery');
@@ -60,7 +73,8 @@ function renderGallery() {
             item.onclick = () => openZoom(img);
             
             const label = document.createElement('p');
-            label.textContent = img.name;
+            label.textContent = plotMap[img.name] ?? img.name;
+
             
             const image = document.createElement('img');
             image.src = `data:image/png;base64,${img.file}`;
