@@ -134,19 +134,13 @@ async def n_alerts_w(db: Session = Depends(get_db)):
 @app.get("/api/vapid_public_key")
 async def get_vapid_public_key():
     """Return the VAPID public key for push notifications"""
-    import base64
-    
-    public_key_b64 = os.getenv("VAPID_PUBLIC_KEY", "")
-    if not public_key_b64:
+    # Public key is already in URL-safe base64 format without padding
+    public_key = os.getenv("VAPID_PUBLIC_KEY", "")
+    if not public_key:
         return JSONResponse(
             status_code=500,
             content={"error": "VAPID public key not configured"}
         )
-    
-    # Decode the base64 encoded public key
-    public_key_bytes = base64.b64decode(public_key_b64)
-    # Re-encode as URL-safe base64 without padding for browser
-    public_key = base64.urlsafe_b64encode(public_key_bytes).decode('utf-8').rstrip('=')
     
     return {"public_key": public_key}
 
@@ -205,20 +199,19 @@ async def send_push_notification(
         from pywebpush import webpush, WebPushException
         import base64
 
-        # Get VAPID keys from environment (base64 encoded)
+        # Get VAPID keys from environment
         vapid_private_key_b64 = os.getenv("VAPID_PRIVATE_KEY")
-        vapid_public_key_b64 = os.getenv("VAPID_PUBLIC_KEY")
+        vapid_public_key = os.getenv("VAPID_PUBLIC_KEY")  # Already in URL-safe base64 format
         vapid_claims = {"sub": os.getenv("VAPID_CLAIM_EMAIL", "mailto:admin@example.com")}
 
-        if not vapid_private_key_b64 or not vapid_public_key_b64:
+        if not vapid_private_key_b64 or not vapid_public_key:
             return JSONResponse(
                 status_code=500,
                 content={"error": "VAPID keys not configured"}
             )
         
-        # Decode the base64 encoded keys
+        # Decode the base64 encoded private key (PEM format)
         vapid_private_key = base64.b64decode(vapid_private_key_b64).decode('utf-8')
-        vapid_public_key = base64.b64decode(vapid_public_key_b64)
 
         # Get all subscriptions
         subscriptions = db.query(PushSubscription).all()
