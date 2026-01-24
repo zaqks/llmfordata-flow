@@ -41,7 +41,7 @@ def generate_vapid_keys():
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
         encryption_algorithm=serialization.NoEncryption()
-    ).decode('utf-8')
+    )
 
     # Get public key in uncompressed point format: 0x04 || X || Y
     public_key = private_key.public_key()
@@ -50,7 +50,9 @@ def generate_vapid_keys():
     y = numbers.y.to_bytes(32, 'big')
     uncompressed_pk = b'\x04' + x + y
 
-    public_key_b64 = urlsafe_b64encode_no_padding(uncompressed_pk)
+    # Encode both keys in base64 for storage
+    private_key_b64 = base64.b64encode(private_pem).decode('utf-8')
+    public_key_b64 = base64.b64encode(uncompressed_pk).decode('utf-8')
 
     print('✅ VAPID keys generated successfully!')
     print()
@@ -58,7 +60,7 @@ def generate_vapid_keys():
     print('Add these to your environment variables (.env file):')
     print('-' * 70)
     print()
-    print('VAPID_PRIVATE_KEY=' + private_pem)
+    print('VAPID_PRIVATE_KEY=' + private_key_b64)
     print('VAPID_PUBLIC_KEY=' + public_key_b64)
     print('VAPID_CLAIM_EMAIL=mailto:your-email@example.com')
     print()
@@ -67,7 +69,7 @@ def generate_vapid_keys():
     print('⚠️  IMPORTANT SECURITY NOTES:')
     print('   1. Keep VAPID_PRIVATE_KEY secret - never commit it to git')
     print('   2. Add .env to your .gitignore file')
-    print('   3. The VAPID_PUBLIC_KEY will be sent to browsers')
+    print('   3. Both keys are base64 encoded and will be decoded at runtime')
     print('   4. Update VAPID_CLAIM_EMAIL with your actual contact email')
     print()
     print('=' * 70)
