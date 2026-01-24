@@ -2,7 +2,7 @@
 """
 VAPID Key Generator for Web Push Notifications
 
-This script generates an EC keypair (SECP256R1) and prints:
+This script generates a VAPID keypair using the py-vapid library.
 - VAPID_PRIVATE_KEY (PEM) - keep this secret
 - VAPID_PUBLIC_KEY (URL-safe base64, no padding) - used by browser subscribe
 - VAPID_CLAIM_EMAIL - example value
@@ -18,13 +18,7 @@ The `VAPID_PRIVATE_KEY` is printed in PEM (PKCS8) format and can be used by
 `pywebpush` as `vapid_private_key`.
 """
 
-import base64
-from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives import serialization
-
-
-def urlsafe_b64encode_no_padding(data: bytes) -> str:
-    return base64.urlsafe_b64encode(data).decode('utf-8').rstrip('=')
+from py_vapid import Vapid
 
 
 def generate_vapid_keys():
@@ -33,33 +27,16 @@ def generate_vapid_keys():
     print('=' * 70)
     print()
 
-    # Generate EC private key (SECP256R1)
-    private_key = ec.generate_private_key(ec.SECP256R1())
+    # Generate VAPID keypair
+    vapid = Vapid()
+    vapid.generate_keys()
 
-    # Serialize private key to PEM (PKCS8)
-    private_pem = private_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption()
-    )
-
-    # Get public key in uncompressed point format: 0x04 || X || Y
-    public_key = private_key.public_key()
-    numbers = public_key.public_numbers()
-    x = numbers.x.to_bytes(32, 'big')
-    y = numbers.y.to_bytes(32, 'big')
-    uncompressed_pk = b'\x04' + x + y
-
-    # Encode public key in URL-safe base64 without padding (browser format)
-    public_key_b64 = base64.urlsafe_b64encode(uncompressed_pk).decode('utf-8').rstrip('=')
-
-    # Write private key to file
-    with open('vapid_private.pem', 'wb') as f:
-        f.write(private_pem)
+    # Save private key to PEM file
+    vapid.save_key('vapid_private.pem')
     
-    # Write public key to file
-    with open('vapid_public.txt', 'w') as f:
-        f.write(public_key_b64)
+    # Get public key in URL-safe base64 format (without padding)
+    # The save_public_key method returns the key in the correct format
+    public_key_b64 = vapid.save_public_key('vapid_public.txt')
 
     print('✅ VAPID keys generated successfully!')
     print()
@@ -93,5 +70,5 @@ if __name__ == '__main__':
     except Exception as e:
         print('❌ Error generating VAPID keys:', e)
         print()
-        print('Make sure `cryptography` is installed:')
-        print('    pip install cryptography')
+        print('Make sure `py-vapid` is installed:')
+        print('    pip install py-vapid')

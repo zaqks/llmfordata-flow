@@ -197,15 +197,35 @@ async def send_push_notification(
     """Send push notification to all subscribed users"""
     try:
         from pywebpush import webpush, WebPushException
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.backends import default_backend
 
-        # Read VAPID keys from files
+        # Read VAPID private key from file
         try:
-            with open('/app/vapid_private.pem', 'r') as f:
-                vapid_private_key = f.read()
+            with open('/app/vapid_private.pem', 'rb') as f:
+                private_key_pem = f.read()
+            
+            # Load the private key to validate it
+            from cryptography.hazmat.primitives.asymmetric import ec
+            private_key = serialization.load_pem_private_key(
+                private_key_pem,
+                password=None,
+                backend=default_backend()
+            )
+            
+            # Use the file path directly for pywebpush to avoid encoding/decoding issues
+            vapid_private_key = '/app/vapid_private.pem'
+            
         except FileNotFoundError:
             return JSONResponse(
                 status_code=500,
                 content={"error": "VAPID private key file not found"}
+            )
+        except Exception as e:
+            print(f"Error loading VAPID private key: {e}")
+            return JSONResponse(
+                status_code=500,
+                content={"error": f"Failed to load VAPID private key: {str(e)}"}
             )
         
         vapid_claims = {"sub": os.getenv("VAPID_CLAIM_EMAIL", "mailto:admin@example.com")}
