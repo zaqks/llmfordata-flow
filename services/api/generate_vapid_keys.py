@@ -18,7 +18,9 @@ The `VAPID_PRIVATE_KEY` is printed in PEM (PKCS8) format and can be used by
 `pywebpush` as `vapid_private_key`.
 """
 
+import base64
 from py_vapid import Vapid
+from cryptography.hazmat.primitives import serialization
 
 
 def generate_vapid_keys():
@@ -34,9 +36,22 @@ def generate_vapid_keys():
     # Save private key to PEM file
     vapid.save_key('vapid_private.pem')
     
-    # Get public key in URL-safe base64 format (without padding)
-    # The save_public_key method returns the key in the correct format
-    public_key_b64 = vapid.save_public_key('vapid_public.txt')
+    # Get the public key numbers (X and Y coordinates)
+    public_numbers = vapid.public_key.public_numbers()
+    
+    # Convert X and Y to 32-byte big-endian format
+    x_bytes = public_numbers.x.to_bytes(32, byteorder='big')
+    y_bytes = public_numbers.y.to_bytes(32, byteorder='big')
+    
+    # Create uncompressed point format: 0x04 || X || Y (65 bytes total)
+    uncompressed_point = b'\x04' + x_bytes + y_bytes
+    
+    # Encode in URL-safe base64 without padding (browser format)
+    public_key_b64 = base64.urlsafe_b64encode(uncompressed_point).decode('utf-8').rstrip('=')
+    
+    # Write public key to file
+    with open('vapid_public.txt', 'w') as f:
+        f.write(public_key_b64)
 
     print('✅ VAPID keys generated successfully!')
     print()
