@@ -50,27 +50,38 @@ def generate_vapid_keys():
     y = numbers.y.to_bytes(32, 'big')
     uncompressed_pk = b'\x04' + x + y
 
-    # Encode private key (PEM) in standard base64 for storage
-    private_key_b64 = base64.b64encode(private_pem).decode('utf-8')
     # Encode public key in URL-safe base64 without padding (browser format)
     public_key_b64 = base64.urlsafe_b64encode(uncompressed_pk).decode('utf-8').rstrip('=')
+
+    # Write private key to file
+    with open('vapid_private.pem', 'wb') as f:
+        f.write(private_pem)
+    
+    # Write public key to file
+    with open('vapid_public.txt', 'w') as f:
+        f.write(public_key_b64)
 
     print('✅ VAPID keys generated successfully!')
     print()
     print('-' * 70)
-    print('Add these to your environment variables (.env file):')
+    print('Files created:')
     print('-' * 70)
     print()
-    print('VAPID_PRIVATE_KEY=' + private_key_b64)
-    print('VAPID_PUBLIC_KEY=' + public_key_b64)
+    print('  📄 vapid_private.pem  - Private key (keep secret!)')
+    print('  📄 vapid_public.txt   - Public key (URL-safe base64)')
+    print()
+    print('-' * 70)
+    print('Add this to your environment variables (.env file):')
+    print('-' * 70)
+    print()
     print('VAPID_CLAIM_EMAIL=mailto:your-email@example.com')
     print()
     print('-' * 70)
     print()
     print('⚠️  IMPORTANT SECURITY NOTES:')
-    print('   1. Keep VAPID_PRIVATE_KEY secret - never commit it to git')
-    print('   2. Add .env to your .gitignore file')
-    print('   3. Private key is base64 encoded, public key is URL-safe base64')
+    print('   1. Keep vapid_private.pem secret - never commit it to git')
+    print('   2. Add vapid_*.pem and vapid_*.txt to your .gitignore file')
+    print('   3. The application will read these files at runtime')
     print('   4. Update VAPID_CLAIM_EMAIL with your actual contact email')
     print()
     print('=' * 70)
