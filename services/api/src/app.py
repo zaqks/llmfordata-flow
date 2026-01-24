@@ -5,8 +5,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List
 import base64
+import os
+import json
 
-from src.db import get_db, Reports, Documents
+from src.db import get_db, Reports, Documents, PushSubscription
 
 app = FastAPI()
 
@@ -120,3 +122,147 @@ async def n_alerts_w(db: Session = Depends(get_db)):
     value = count / 7 if count > 0 else 0
     value = round(value, 2)
     return {"value": value}
+
+
+# ===================== PUSH NOTIFICATION ENDPOINTS =====================
+
+@app.get("/api/vapid_public_key")
+async def get_vapid_public_key():
+    """Return the VAPID public key for push notifications"""
+    public_key = os.getenv("VAPID_PUBLIC_KEY", "")
+    if not public_key:
+        return JSONResponse(
+            status_code=500,
+            content={"error": "VAPID public key not configured"}
+        )
+    return {"public_key": public_key}
+
+
+@app.post("/api/subscribe")
+async def subscribe_to_push(subscription_data: dict, db: Session = Depends(get_db)):
+    """Save a push notification subscription"""
+    try:
+        endpoint = subscription_data.get("endpoint")
+        keys = subscription_data.get("keys", {})
+        p256dh = keys.get("p256dh")
+        auth = keys.get("auth")
+
+        if not all([endpoint, p256dh, auth]):
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Invalid subscription data"}
+            )
+
+        # Check if subscription already exists
+        existing = db.query(PushSubscription).filter(
+            PushSubscription.endpoint == endpoint
+        ).first()
+
+        if existing:
+            # Update existing subscription
+            existing.p256dh = p256dh
+            existing.auth = auth
+        else:
+            # Create new subscription
+            new_subscription = PushSubscription(
+                endpoint=endpoint,
+                p256dh=p256dh,
+                auth=auth
+            )
+            db.add(new_subscription)
+
+        db.commit()
+        return {"status": "success", "message": "Subscription saved"}
+
+    except Exception as e:
+        db.rollback()
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+
+@app.post("/api/send_notification")
+async def send_push_notification(
+    notification_data: dict = None,
+    db: Session = Depends(get_db)
+):
+    """Send push notification to all subscribed users"""
+    try:
+        from pywebpush import webpush, WebPushException
+
+        # Get VAPID keys from environment
+        vapid_private_key = os.getenv("VAPID_PRIVATE_KEY")
+        vapid_public_key = os.getenv("VAPID_PUBLIC_KEY")
+        vapid_claims = {"sub": os.getenv("VAPID_CLAIM_EMAIL", "mailto:admin@example.com")}
+
+        if not vapid_private_key or not vapid_public_key:
+            return JSONResponse(
+                status_code=500,
+                content={"error": "VAPID keys not configured"}
+            )
+
+        # Get all subscriptions
+        subscriptions = db.query(PushSubscription).all()
+
+        if not subscriptions:
+            return {"status": "success", "message": "No subscriptions found", "sent": 0}
+
+        # Default notification data
+        if notification_data is None:
+            notification_data = {}
+        
+        payload = json.dumps({
+            "title": notification_data.get("title", "New Report Available"),
+            "body": notification_data.get("body", "A new analysis report has been generated."),
+            "url": notification_data.get("url", "/executive")
+        })
+
+        sent_count = 0
+        failed_endpoints = []
+
+        # Send to all subscriptions
+        for subscription in subscriptions:
+            try:
+                subscription_info = {
+                    "endpoint": subscription.endpoint,
+                    "keys": {
+                        "p256dh": subscription.p256dh,
+                        "auth": subscription.auth
+                    }
+                }
+
+                webpush(
+                    subscription_info=subscription_info,
+                    data=payload,
+                    vapid_private_key=vapid_private_key,
+                    vapid_claims=vapid_claims
+                )
+                sent_count += 1
+
+            except WebPushException as e:
+                print(f"Failed to send notification to {subscription.endpoint}: {e}")
+                # If subscription is invalid (410 Gone or 404), remove it
+                if e.response and e.response.status_code in [410, 404]:
+                    failed_endpoints.append(subscription.endpoint)
+
+        # Remove failed subscriptions
+        if failed_endpoints:
+            db.query(PushSubscription).filter(
+                PushSubscription.endpoint.in_(failed_endpoints)
+            ).delete(synchronize_session=False)
+            db.commit()
+
+        return {
+            "status": "success",
+            "message": f"Notifications sent to {sent_count} subscribers",
+            "sent": sent_count,
+            "removed": len(failed_endpoints)
+        }
+
+    except Exception as e:
+        print(f"Error sending notifications: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )

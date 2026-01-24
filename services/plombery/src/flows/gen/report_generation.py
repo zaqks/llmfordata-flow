@@ -7,6 +7,7 @@ import os
 import shutil
 from datetime import datetime
 import asyncio
+import httpx
 from plombery import task, get_logger, Trigger, register_pipeline
 from apscheduler.triggers.interval import IntervalTrigger
 
@@ -31,6 +32,30 @@ def load_llm_prompt():
     with open(PROMPT_MARKDOWN_PATH, "r", encoding="utf-8") as f:
         return f.read()
 
+
+# Send notification to API service
+async def send_report_notification():
+    """Send push notification to all subscribed users via API service"""
+    api_url = os.getenv("API_SERVICE_URL", "http://api:8001")
+    notification_endpoint = f"{api_url}/api/send_notification"
+    
+    notification_data = {
+        "title": "New Report Available! 📊",
+        "body": "A new analysis report has been generated and is ready to view.",
+        "url": "/executive"
+    }
+    
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                notification_endpoint,
+                json=notification_data
+            )
+            response.raise_for_status()
+            result = response.json()
+            return result
+    except Exception as e:
+        raise Exception(f"Failed to send notification: {e}")
 
 
 class InputParams(BaseModel):
@@ -168,6 +193,15 @@ async def report_and_charts_pipeline(params: InputParams):
     # 6. save to db (run in executor)
     await loop.run_in_executor(None, save_report_and_documents, output_dir, session)
     logger.info(f"Report and charts saved to db")
+
+    # 7. Send push notifications to subscribed users
+    try:
+        logger.info("Sending push notifications...")
+        await send_report_notification()
+        logger.info("Push notifications sent")
+    except Exception as e:
+        logger.warning(f"Failed to send push notifications: {e}")
+        # Don't fail the entire pipeline if notifications fail
 
     # Mark used rows as exported and commit
     for row in analysis_rows:

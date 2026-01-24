@@ -23,6 +23,16 @@ class Documents(Base):
     report_id = Column(Integer, ForeignKey("reports.id"), nullable=True)
 
 
+# PushSubscription model for browser push notifications
+class PushSubscription(Base):
+    __tablename__ = "push_subscriptions"
+    id = Column(Integer, primary_key=True, index=True)
+    endpoint = Column(String, nullable=False, unique=True)
+    p256dh = Column(String, nullable=False)  # Public key
+    auth = Column(String, nullable=False)     # Auth secret
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 # Database connection
 engine = create_engine(os.getenv("DATABASE_URL"))  # SQLite database file
 
@@ -37,3 +47,6 @@ def get_db():
         yield db
     finally:
         db.close()
+
+#
+Base.metadata.create_all(engine)

@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupDownloadButton();
     setupThemeToggle();
     setupModals();
+    setupPushNotifications();
 });
 
 // ===================== LOADING OVERLAY HELPERS =====================
@@ -340,4 +341,106 @@ function setupDownloadButton() {
             };
         }
     });
+}
+
+// ===================== PUSH NOTIFICATIONS =====================
+
+// Helper function to convert VAPID public key from base64 to Uint8Array
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+        .replace(/\-/g, '+')
+        .replace(/_/g, '/');
+
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+// Setup push notifications
+async function setupPushNotifications() {
+    const enableBtn = document.getElementById('enable-notifications-btn');
+    
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        enableBtn.disabled = true;
+        enableBtn.textContent = '🔕 Not Supported';
+        console.warn('Push notifications not supported');
+        return;
+    }
+
+    // Check if already subscribed
+    try {
+        const registration = await navigator.serviceWorker.register('/static/executive/sw.js');
+        const subscription = await registration.pushManager.getSubscription();
+        
+        if (subscription) {
+            enableBtn.textContent = '✅ Notifications Enabled';
+            enableBtn.disabled = true;
+        }
+    } catch (err) {
+        console.error('Error checking subscription:', err);
+    }
+
+    enableBtn.addEventListener('click', async () => {
+        try {
+            await subscribeToPushNotifications();
+        } catch (err) {
+            console.error('Error subscribing:', err);
+            alert('Failed to enable notifications. Please try again.');
+        }
+    });
+}
+
+// Subscribe to push notifications
+async function subscribeToPushNotifications() {
+    const enableBtn = document.getElementById('enable-notifications-btn');
+    
+    try {
+        // Request permission
+        const permission = await Notification.requestPermission();
+        
+        if (permission !== 'granted') {
+            alert('Notification permission denied');
+            return;
+        }
+
+        // Register service worker
+        const registration = await navigator.serviceWorker.register('/static/executive/sw.js');
+        await navigator.serviceWorker.ready;
+
+        // Get VAPID public key from backend
+        const vapidResponse = await fetch(`${API_BASE}/api/vapid_public_key`);
+        const vapidData = await vapidResponse.json();
+        const vapidPublicKey = vapidData.public_key;
+
+        // Subscribe to push manager
+        const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+        });
+
+        // Send subscription to backend
+        const response = await fetch(`${API_BASE}/api/subscribe`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(subscription.toJSON())
+        });
+
+        if (response.ok) {
+            enableBtn.textContent = '✅ Notifications Enabled';
+            enableBtn.disabled = true;
+            console.log('Successfully subscribed to push notifications');
+        } else {
+            throw new Error('Failed to save subscription');
+        }
+    } catch (error) {
+        console.error('Error in subscription process:', error);
+        throw error;
+    }
 }
