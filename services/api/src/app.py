@@ -38,6 +38,11 @@ async def anal():
 async def executive():
     return FileResponse("src/static/executive/index.html")
 
+# Service worker for push notifications (must be served from root scope)
+@app.get("/sw.js")
+async def service_worker():
+    return FileResponse("src/static/sw.js", media_type="application/javascript")
+
 # Endpoint to expose the HOST environment variable as JSON
 import os
 

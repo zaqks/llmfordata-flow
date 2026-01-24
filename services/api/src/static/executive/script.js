@@ -363,84 +363,145 @@ function urlBase64ToUint8Array(base64String) {
 
 // Setup push notifications
 async function setupPushNotifications() {
+    console.log('[Push Notifications] Setting up...');
     const enableBtn = document.getElementById('enable-notifications-btn');
+    
+    if (!enableBtn) {
+        console.error('[Push Notifications] Button not found! ID: enable-notifications-btn');
+        return;
+    }
     
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
         enableBtn.disabled = true;
         enableBtn.textContent = '🔕 Not Supported';
-        console.warn('Push notifications not supported');
+        console.warn('[Push Notifications] Not supported in this browser');
         return;
     }
 
+    console.log('[Push Notifications] Browser supports push notifications');
+
     // Check if already subscribed
     try {
-        const registration = await navigator.serviceWorker.register('/static/executive/sw.js');
+        console.log('[Push Notifications] Registering service worker...');
+        const registration = await navigator.serviceWorker.register('/sw.js', {
+            scope: '/'
+        });
+        console.log('[Push Notifications] Service worker registered:', registration);
+        
         const subscription = await registration.pushManager.getSubscription();
+        console.log('[Push Notifications] Current subscription:', subscription);
         
         if (subscription) {
+            console.log('[Push Notifications] Already subscribed');
             enableBtn.textContent = '✅ Notifications Enabled';
             enableBtn.disabled = true;
+        } else {
+            console.log('[Push Notifications] Not yet subscribed, button ready');
         }
     } catch (err) {
-        console.error('Error checking subscription:', err);
+        console.error('[Push Notifications] Error checking subscription:', err);
     }
 
-    enableBtn.addEventListener('click', async () => {
+    enableBtn.addEventListener('click', async (e) => {
+        console.log('[Push Notifications] Button clicked!');
+        e.preventDefault();
         try {
             await subscribeToPushNotifications();
         } catch (err) {
-            console.error('Error subscribing:', err);
-            alert('Failed to enable notifications. Please try again.');
+            console.error('[Push Notifications] Error subscribing:', err);
+            alert('Failed to enable notifications. Please check console for details.');
         }
     });
+    
+    console.log('[Push Notifications] Setup complete, event listener attached');
 }
 
 // Subscribe to push notifications
 async function subscribeToPushNotifications() {
+    console.log('[Subscribe] Starting subscription process...');
     const enableBtn = document.getElementById('enable-notifications-btn');
     
     try {
         // Request permission
+        console.log('[Subscribe] Requesting notification permission...');
         const permission = await Notification.requestPermission();
+        console.log('[Subscribe] Permission result:', permission);
         
         if (permission !== 'granted') {
+            console.warn('[Subscribe] Notification permission denied by user');
             alert('Notification permission denied');
             return;
         }
 
         // Register service worker
-        const registration = await navigator.serviceWorker.register('/static/executive/sw.js');
-        await navigator.serviceWorker.ready;
+        console.log('[Subscribe] Registering service worker...');
+        const registration = await navigator.serviceWorker.register('/sw.js', {
+            scope: '/'
+        });
+        console.log('[Subscribe] Service worker registered:', registration);
+        
+        console.log('[Subscribe] Waiting for service worker to be ready...');
+        const readyRegistration = await Promise.race([
+            navigator.serviceWorker.ready,
+            new Promise((resolve, reject) => 
+                setTimeout(() => reject(new Error('Service worker ready timeout after 5s')), 5000)
+            )
+        ]);
+        console.log('[Subscribe] Service worker ready:', readyRegistration);
 
         // Get VAPID public key from backend
+        console.log('[Subscribe] Fetching VAPID public key from:', `${API_BASE}/api/vapid_public_key`);
         const vapidResponse = await fetch(`${API_BASE}/api/vapid_public_key`);
+        console.log('[Subscribe] VAPID response status:', vapidResponse.status);
+        
+        if (!vapidResponse.ok) {
+            throw new Error(`Failed to fetch VAPID key: ${vapidResponse.status}`);
+        }
+        
         const vapidData = await vapidResponse.json();
+        console.log('[Subscribe] VAPID data received:', vapidData);
         const vapidPublicKey = vapidData.public_key;
 
+        if (!vapidPublicKey) {
+            throw new Error('VAPID public key is missing in response');
+        }
+
         // Subscribe to push manager
+        console.log('[Subscribe] Converting VAPID key and subscribing to push manager...');
         const subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
         });
+        console.log('[Subscribe] Push subscription created:', subscription);
+        console.log('[Subscribe] Subscription JSON:', subscription.toJSON());
 
         // Send subscription to backend
+        const subscriptionData = subscription.toJSON();
+        console.log('[Subscribe] Sending subscription to:', `${API_BASE}/api/subscribe`);
+        console.log('[Subscribe] Subscription payload:', subscriptionData);
+        
         const response = await fetch(`${API_BASE}/api/subscribe`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(subscription.toJSON())
+            body: JSON.stringify(subscriptionData)
         });
+        
+        console.log('[Subscribe] Backend response status:', response.status);
+        const responseData = await response.json();
+        console.log('[Subscribe] Backend response data:', responseData);
 
         if (response.ok) {
             enableBtn.textContent = '✅ Notifications Enabled';
             enableBtn.disabled = true;
-            console.log('Successfully subscribed to push notifications');
+            console.log('[Subscribe] ✅ Successfully subscribed to push notifications!');
         } else {
-            throw new Error('Failed to save subscription');
+            throw new Error(`Failed to save subscription: ${response.status} - ${JSON.stringify(responseData)}`);
         }
     } catch (error) {
-        console.error('Error in subscription process:', error);
+        console.error('[Subscribe] ❌ Error in subscription process:', error);
+        console.error('[Subscribe] Error stack:', error.stack);
         throw error;
     }
 }
