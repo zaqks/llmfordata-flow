@@ -14,13 +14,24 @@ document.addEventListener('DOMContentLoaded', () => {
         breaks: true,
         tables: true
     });
-    
+
     loadKPIs();
     loadReports();
     setupDownloadButton();
     setupThemeToggle();
     setupModals();
 });
+
+// ===================== LOADING OVERLAY HELPERS =====================
+function showLoadingOverlay() {
+    const overlay = document.getElementById('report-loading');
+    overlay.classList.add('active');
+}
+
+function hideLoadingOverlay() {
+    const overlay = document.getElementById('report-loading');
+    overlay.classList.remove('active');
+}
 
 // ===================== KPI LOADER (NEW ADDITION) =====================
 async function loadKPIs() {
@@ -39,13 +50,13 @@ async function loadKPIs() {
             const response = await fetch(config.url);
             if (!response.ok) throw new Error('API error');
             const data = await response.json();
-            
+
             // Handle different possible response formats
             let value = data;
             if (typeof data === 'object' && data !== null) {
                 value = data.value ?? data.count ?? data.total ?? config.fallback;
             }
-            
+
             // Format number with commas if it's a large number
             if (typeof value === 'number' || !isNaN(value)) {
                 const numValue = typeof value === 'number' ? value : parseFloat(value);
@@ -100,20 +111,20 @@ function setupModals() {
 function renderGallery() {
     const gallery = document.getElementById('charts-gallery');
     gallery.innerHTML = '';
-    
+
     if (currentPngImages.length > 0) {
         currentPngImages.forEach(img => {
             const item = document.createElement('div');
             item.className = 'chart-item';
             item.onclick = () => openZoom(img);
-            
+
             const label = document.createElement('p');
             label.textContent = img.name;
-            
+
             const image = document.createElement('img');
             image.src = `data:image/png;base64,${img.file}`;
             image.alt = img.name;
-            
+
             item.appendChild(label);
             item.appendChild(image);
             gallery.appendChild(item);
@@ -162,10 +173,10 @@ async function loadReports() {
     try {
         const response = await fetch('/api/reports');
         const reports = await response.json();
-        
+
         const reportsList = document.getElementById('reports-list');
         reportsList.innerHTML = '';
-        
+
         reports.forEach(report => {
             const reportItem = document.createElement('div');
             reportItem.className = 'report-item';
@@ -181,16 +192,19 @@ async function loadReports() {
 // Load a specific report's documents
 async function loadReport(reportId) {
     currentReportId = reportId;
-    
+
+    // Show loading overlay
+    showLoadingOverlay();
+
     try {
         const response = await fetch(`/api/reports/${reportId}/documents`);
         const documents = await response.json();
-        
+
         // Separate documents by type
         let reportMd = null;
         let reportChartsMd = null;
         const pngImages = [];
-        
+
         documents.forEach(doc => {
             if (doc.name === 'report.md') {
                 reportMd = doc;
@@ -200,11 +214,11 @@ async function loadReport(reportId) {
                 pngImages.push(doc);
             }
         });
-        
+
         // Store report_charts.md for download
         reportChartsDoc = reportChartsMd;
         currentPngImages = pngImages;
-        
+
         // Render markdown content
         if (reportMd) {
             const markdownText = atob(reportMd.file); // Decode base64
@@ -213,11 +227,11 @@ async function loadReport(reportId) {
         } else {
             document.getElementById('markdown-content').innerHTML = '<p>No report content available</p>';
         }
-        
+
         // Show/hide buttons
         const downloadBtn = document.getElementById('download-btn');
         const showChartsBtn = document.getElementById('show-charts-btn');
-        
+
         if (reportChartsMd) {
             downloadBtn.style.display = 'block';
         } else {
@@ -229,9 +243,13 @@ async function loadReport(reportId) {
         } else {
             showChartsBtn.style.display = 'none';
         }
-        
+
     } catch (error) {
         console.error('Error loading report:', error);
+        document.getElementById('markdown-content').innerHTML = '<p class="error">Failed to load report. Please try again.</p>';
+    } finally {
+        // Hide loading overlay
+        hideLoadingOverlay();
     }
 }
 
@@ -242,10 +260,10 @@ function setupDownloadButton() {
         if (reportChartsDoc) {
             // Decode base64 and get markdown text
             const markdownText = atob(reportChartsDoc.file);
-            
+
             // Convert markdown to HTML
             const htmlContent = marked.parse(markdownText);
-            
+
             // Create full HTML document with styling
             const fullHtml = `
 <!DOCTYPE html>
@@ -312,9 +330,9 @@ function setupDownloadButton() {
             const printWindow = window.open('', '_blank');
             printWindow.document.write(fullHtml);
             printWindow.document.close();
-            
+
             // Wait for content to load then print
-            printWindow.onload = function() {
+            printWindow.onload = function () {
                 printWindow.focus();
                 printWindow.print();
                 // Optional: close window after print
