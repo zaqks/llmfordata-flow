@@ -31,29 +31,32 @@ async def main():
 
     logger = get_logger()
     prompt_template = Template(load_prompt())
-    
+
     BATCH_SIZE = 10
     CONCURRENCY = 5
     total_analyzed = 0
-    
+
     while True:
         session = SessionLocal()
         try:
             # Fetch a batch of unanalyzed datasources
             datasources = await asyncio.to_thread(
-                lambda: session.query(Datasource).filter(Datasource.analyzed == False).limit(BATCH_SIZE).all()
+                lambda: session.query(Datasource)
+                .filter(Datasource.analyzed == False)
+                .limit(BATCH_SIZE)
+                .all()
             )
-            
+
             if not datasources:
                 break
-                
+
             logger.info(f"Processing batch of {len(datasources)} datasources.")
-            
+
             # Extract data to avoid threading issues with SQLAlchemy objects
             ds_items = [(ds.id, ds.title, ds.abstract_or_summary) for ds in datasources]
-            
+
             sem = asyncio.Semaphore(CONCURRENCY)
-            
+
             async def process_one(item):
                 ds_id, title, abstract = item
                 async with sem:
@@ -61,7 +64,7 @@ async def main():
                         prompt = prompt_template.substitute(
                             title=title, abstract=abstract or ""
                         )
-                        
+
                         # Run ask_llm in a thread
                         response = await asyncio.to_thread(ask_llm, prompt)
                         try:
@@ -76,7 +79,9 @@ async def main():
                             "datasource_id": ds_id,
                             "topics": ", ".join(result.get("topics", [])),
                             "keywords": ", ".join(result.get("keywords", [])),
-                            "emerging_algorithms": ", ".join(result.get("emerging_algorithms", [])),
+                            "emerging_algorithms": ", ".join(
+                                result.get("emerging_algorithms", [])
+                            ),
                             "summary": result.get("summary"),
                             "impact": result.get("impact"),
                         }
@@ -86,21 +91,21 @@ async def main():
                         return None
 
             results = await asyncio.gather(*(process_one(item) for item in ds_items))
-            
+
             # Free items memory
             del ds_items
-            
+
             # Process results sequentially in session
             for res in results:
                 if not res:
                     continue
                 ds_id, analysis_data = res
-                
+
                 # Find the datasource object by id
                 ds = session.query(Datasource).filter(Datasource.id == ds_id).first()
                 if not ds:
                     continue
-                
+
                 # Check if analysis already exists (using session)
                 if exists_analysis_by_datasource_id(ds_id, session=session):
                     logger.info(
@@ -115,23 +120,21 @@ async def main():
                     total_analyzed += 1
                     logger.info(f"Analyzed datasource {ds_id}")
                 else:
-                    logger.info(
-                        f"Analysis for datasource {ds_id} was not inserted."
-                    )
-            
+                    logger.info(f"Analysis for datasource {ds_id} was not inserted.")
+
             # Free results memory
             del results
-            
+
             # Commit batch
             await asyncio.to_thread(session.commit)
-            
+
         except Exception as e:
             logger.error(str(e))
             session.rollback()
         finally:
             session.close()
             gc.collect()
-            
+
     return {"analyzed": total_analyzed}
 
 
@@ -145,7 +148,7 @@ async def trigger_report_generation():
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f'{os.getenv("HOST")}/api/pipelines/report_generation/run',
+                f'{os.getenv("HOST2")}/api/pipelines/report_generation/run',
                 json={"params": {}},
                 timeout=10,
             )
