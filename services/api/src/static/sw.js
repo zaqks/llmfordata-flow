@@ -70,24 +70,38 @@ self.addEventListener('notificationclick', function(event) {
     event.notification.close();
 
     if (event.action === 'view' || !event.action) {
-        const urlToOpen = new URL(event.notification.data.url || '/executive', self.location.origin).href;
+        const targetPath = event.notification.data.url || '/executive';
+        const urlToOpen = new URL(targetPath, self.location.origin).href;
+        
+        console.log('[SW] Opening URL:', urlToOpen);
         
         event.waitUntil(
             clients.matchAll({
                 type: 'window',
                 includeUncontrolled: true
             }).then(function(clientList) {
-                // Check if there's already a window open
+                console.log('[SW] Found clients:', clientList.length);
+                
+                // Check if there's already a window open with the same path
                 for (let i = 0; i < clientList.length; i++) {
                     const client = clientList[i];
-                    if (client.url === urlToOpen && 'focus' in client) {
+                    const clientUrl = new URL(client.url);
+                    const targetUrl = new URL(urlToOpen);
+                    
+                    // Match by pathname instead of full URL to handle origin differences
+                    if (clientUrl.pathname === targetUrl.pathname && 'focus' in client) {
+                        console.log('[SW] Focusing existing client:', client.url);
                         return client.focus();
                     }
                 }
-                // If no window is open, open a new one
+                
+                // If no matching window found, open a new one
+                console.log('[SW] Opening new window');
                 if (clients.openWindow) {
                     return clients.openWindow(urlToOpen);
                 }
+            }).catch(function(err) {
+                console.error('[SW] Error handling notification click:', err);
             })
         );
     }
