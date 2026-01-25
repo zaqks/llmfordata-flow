@@ -229,8 +229,6 @@ async def send_push_notification(
                 status_code=500,
                 content={"error": f"Failed to load VAPID private key: {str(e)}"}
             )
-        
-        vapid_claims = {"sub": os.getenv("VAPID_CLAIM_EMAIL", "mailto:admin@example.com")}
 
         # Get all subscriptions
         subscriptions = db.query(PushSubscription).all()
@@ -260,6 +258,17 @@ async def send_push_notification(
                         "p256dh": subscription.p256dh,
                         "auth": subscription.auth
                     }
+                }
+
+                # Extract the origin from the endpoint for the aud claim
+                from urllib.parse import urlparse
+                parsed_url = urlparse(subscription.endpoint)
+                audience = f"{parsed_url.scheme}://{parsed_url.netloc}"
+                
+                # Create VAPID claims with the correct audience for this endpoint
+                vapid_claims = {
+                    "sub": os.getenv("VAPID_CLAIM_EMAIL", "mailto:admin@example.com"),
+                    "aud": audience
                 }
 
                 webpush(
