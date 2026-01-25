@@ -38,24 +38,34 @@ async def send_report_notification():
     """Send push notification to all subscribed users via API service"""
     api_url = os.getenv("API_SERVICE_URL", "http://api:8001")
     notification_endpoint = f"{api_url}/api/send_notification"
-    
+
     notification_data = {
         "title": "New Report Available! 📊",
         "body": "A new analysis report has been generated and is ready to view.",
-        "url": "/executive"
+        "url": "/executive",
     }
-    
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.post(
-                notification_endpoint,
-                json=notification_data
-            )
-            response.raise_for_status()
-            result = response.json()
-            return result
-    except Exception as e:
-        raise Exception(f"Failed to send notification: {e}")
+
+    retries = 3
+    interval = 30  # seconds
+    timeout = httpx.Timeout(20.0)
+
+    for attempt in range(1, retries + 1):
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.post(
+                    notification_endpoint, json=notification_data
+                )
+                response.raise_for_status()
+                return response.json()
+
+        except Exception as e:
+            if attempt == retries:
+                raise Exception(
+                    f"Failed to send notification after {retries} attempts: {e}"
+                )
+
+            # wait before next retry
+            await asyncio.sleep(interval)
 
 
 class InputParams(BaseModel):
@@ -69,10 +79,10 @@ class InputParams(BaseModel):
 # Single task: Full report and charts pipeline
 
 
-
 @task
 async def report_and_charts_pipeline(params: InputParams):
     import gc
+
     logger = get_logger()
     num_rows = params.num_rows
     batch_size = params.batch_size
@@ -86,54 +96,60 @@ async def report_and_charts_pipeline(params: InputParams):
 
     # 2. Fetch analysis data rows (sync DB, but can run in executor)
     from ...utils._db import Datasource
+
     session = SessionLocal()
     try:
+
         def fetch_rows():
             # Optimize fetching: join in DB instead of loop
             from ...utils._db import DatasourceAnalysis
-            
-            query = session.query(DatasourceAnalysis, Datasource).join(
-                Datasource, DatasourceAnalysis.datasource_id == Datasource.id
-            ).filter(DatasourceAnalysis.exported == False).order_by(DatasourceAnalysis.id).limit(num_rows)
-            
+
+            query = (
+                session.query(DatasourceAnalysis, Datasource)
+                .join(Datasource, DatasourceAnalysis.datasource_id == Datasource.id)
+                .filter(DatasourceAnalysis.exported == False)
+                .order_by(DatasourceAnalysis.id)
+                .limit(num_rows)
+            )
+
             results = query.all()
-            
+
             analysis_rows = [r[0] for r in results]
             rows_dicts = []
             for analysis, source in results:
                 d = {
-                    'id': analysis.id,
-                    'datasource_id': analysis.datasource_id,
-                    'topics': analysis.topics,
-                    'keywords': analysis.keywords,
-                    'emerging_algorithms': analysis.emerging_algorithms,
-                    'summary': analysis.summary,
-                    'impact': analysis.impact,
-                    'source': source.source,
-                    'date': source.date
+                    "id": analysis.id,
+                    "datasource_id": analysis.datasource_id,
+                    "topics": analysis.topics,
+                    "keywords": analysis.keywords,
+                    "emerging_algorithms": analysis.emerging_algorithms,
+                    "summary": analysis.summary,
+                    "impact": analysis.impact,
+                    "source": source.source,
+                    "date": source.date,
                 }
                 rows_dicts.append(d)
 
             df = pd.DataFrame(rows_dicts)
-            if 'source' in df.columns:
-                df['source'] = df['source'].astype('category')
-            if 'date' in df.columns:
-                df['date'] = pd.to_datetime(df['date'], errors='coerce')
-            
+            if "source" in df.columns:
+                df["source"] = df["source"].astype("category")
+            if "date" in df.columns:
+                df["date"] = pd.to_datetime(df["date"], errors="coerce")
+
             # Free intermediate data
             del results
             del rows_dicts
             gc.collect()
-            
+
             return analysis_rows, df
-        
+
         analysis_rows, df = await loop.run_in_executor(None, fetch_rows)
 
     except Exception as e:
         logger.error(f"Error fetching analysis rows: {e}")
         session.close()
         raise
-    
+
     if not len(analysis_rows):
         logger.info("Nothing Interesting for now...")
         session.close()
@@ -144,12 +160,16 @@ async def report_and_charts_pipeline(params: InputParams):
     report_path = os.path.join(output_dir, "report.md")
     try:
         logger.info("Generating report...")
+
         def gen_report():
             return generate_report(analysis_rows, prompt_markdown, batch_size)
+
         md_report = await loop.run_in_executor(None, gen_report)
+
         def write_report():
             with open(report_path, "w", encoding="utf-8") as f:
                 f.write(md_report)
+
         await loop.run_in_executor(None, write_report)
         logger.info(f"Report written to {report_path}")
         del md_report
@@ -210,7 +230,7 @@ async def report_and_charts_pipeline(params: InputParams):
 
     del analysis_rows
     session.close()
-    
+
     await loop.run_in_executor(None, shutil.rmtree, output_dir)
     logger.info(f"Cleaned")
     gc.collect()
