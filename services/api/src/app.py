@@ -111,7 +111,7 @@ async def anal_length(db: Session = Depends(get_db)):
 @app.get("/api/n_discos")
 async def n_discos(db: Session = Depends(get_db)):
     """Get the number of reports"""
-    count = db.query(Reports).count()
+    count = db.query(Documents).count()
     return {"value": count}
 
 @app.get("/api/n_alerts")
