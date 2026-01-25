@@ -40,8 +40,8 @@ async def send_report_notification():
     notification_endpoint = f"{api_url}/api/send_notification"
 
     notification_data = {
-        "title": "New Report Available! 📊",
-        "body": "A new analysis report has been generated and is ready to view.",
+        "title": "New Data Processing Model Alert 📊",
+        "body": "A new data-processing-oriented model is now available, come check it out!",
         "url": "/executive",
     }
 
