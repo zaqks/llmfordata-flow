@@ -134,14 +134,15 @@ async def n_alerts_w(db: Session = Depends(get_db)):
 @app.get("/api/vapid_public_key")
 async def get_vapid_public_key():
     """Return the VAPID public key for push notifications"""
+    public_key_path = os.environ.get('VAPID_PUBLIC_PATH', '/app/vapid_public.txt')
     try:
-        with open('/app/vapid_public.txt', 'r') as f:
+        with open(public_key_path, 'r') as f:
             public_key = f.read().strip()
         return {"public_key": public_key}
     except FileNotFoundError:
         return JSONResponse(
             status_code=500,
-            content={"error": "VAPID public key file not found"}
+            content={"error": f"VAPID public key file not found at {public_key_path}"}
         )
 
 
@@ -200,11 +201,12 @@ async def send_push_notification(
         from cryptography.hazmat.primitives import serialization
         from cryptography.hazmat.backends import default_backend
 
-        # Read VAPID private key from file
+        # Read VAPID private key from file path specified by env var
+        vapid_private_path = os.environ.get('VAPID_PRIVATE_PATH', '/app/vapid_private.pem')
         try:
-            with open('/app/vapid_private.pem', 'rb') as f:
+            with open(vapid_private_path, 'rb') as f:
                 private_key_pem = f.read()
-            
+
             # Load the private key to validate it
             from cryptography.hazmat.primitives.asymmetric import ec
             private_key = serialization.load_pem_private_key(
@@ -212,14 +214,14 @@ async def send_push_notification(
                 password=None,
                 backend=default_backend()
             )
-            
+
             # Use the file path directly for pywebpush to avoid encoding/decoding issues
-            vapid_private_key = '/app/vapid_private.pem'
-            
+            vapid_private_key = vapid_private_path
+
         except FileNotFoundError:
             return JSONResponse(
                 status_code=500,
-                content={"error": "VAPID private key file not found"}
+                content={"error": f"VAPID private key file not found at {vapid_private_path}"}
             )
         except Exception as e:
             print(f"Error loading VAPID private key: {e}")
