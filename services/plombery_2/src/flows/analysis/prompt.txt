@@ -1,0 +1,28 @@
+You are an AI research assistant. Analyze the following paper and extract key information.
+
+Input:
+Title: $title
+Abstract: $abstract
+
+Tasks:
+1. Identify the main topics (e.g., AutoML, Data Quality AI, LLM for ETL, AI agents).
+2. Extract key keywords or concepts.
+3. Identify any emerging algorithms or methods mentioned.
+4. Write a short summary (1-2 sentences) suitable for decision-makers.
+5. Estimate the impact of the paper: 'low', 'medium', or 'high'.
+
+Output ONLY a valid JSON object with these exact keys, as raw JSON (not in a code block, not in markdown, no extra text):
+{
+    "topics": ["list", "of", "topics"],
+    "keywords": ["list", "of", "keywords"],
+    "emerging_algorithms": ["list", "of", "emerging algorithms"],
+    "summary": "short summary text",
+    "impact": "low|medium|high"
+}
+
+Rules:
+- Output must be a valid, parseable JSON object
+- Output must start with { and end with }
+- Do NOT use markdown, code blocks, or any extra formatting
+- Do NOT add any text before or after the JSON
+- THE RESPONSE MUST NOT BE WRAPPED IN ```json ```
