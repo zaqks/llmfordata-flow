@@ -22,9 +22,9 @@ services:
     #   timeout: 5s
     #   retries: 5
 
-  plombery:
+  api:
     build:
-      context: ./services/plombery
+      context: ./services/api
       dockerfile: Dockerfile
     deploy:
       resources:
@@ -38,11 +38,11 @@ services:
     env_file:
       - .env
     volumes:
-      - ./services/plombery:/app
+      - ./services/api:/app
 
-  api:
+  plombery-1:
     build:
-      context: ./services/api
+      context: ./services/plombery_1
       dockerfile: Dockerfile
     deploy:
       resources:
@@ -52,11 +52,29 @@ services:
       postgres:
         condition: service_started
     ports:
-      - 8001:8000
+      - 8001:8001
     env_file:
       - .env
     volumes:
-      - ./services/api:/app
+      - ./services/plombery_1:/app
+
+  plombery-2:
+    build:
+      context: ./services/plombery_2
+      dockerfile: Dockerfile
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    depends_on:
+      postgres:
+        condition: service_started
+    ports:
+      - 8002:8002
+    env_file:
+      - .env
+    volumes:
+      - ./services/plombery_2:/app
 
 volumes:
   postgres_data:
