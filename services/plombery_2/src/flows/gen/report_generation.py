@@ -21,6 +21,7 @@ from .tasks.charts_generation import generate_all_charts
 from .tasks.report_concat import append_charts_section
 from ...utils._tools import save_report_and_documents
 from ...utils._db import SessionLocal
+from ...utils._ai import ping_llm
 from pydantic import BaseModel, Field
 import pandas as pd
 
@@ -73,6 +74,20 @@ class InputParams(BaseModel):
 
 
 # Single task: Full report and charts pipeline
+
+
+@task
+async def ping_llm_check():
+    """Check LLM connectivity before starting the report generation."""
+    logger = get_logger()
+    logger.info("Checking LLM connectivity...")
+    try:
+        response = await asyncio.get_event_loop().run_in_executor(None, ping_llm)
+        logger.info(f"✓ LLM is available. Response: {response[:50]}...")
+        return response
+    except Exception as e:
+        logger.error(f"✗ LLM service check failed: {e}")
+        raise
 
 
 @task
@@ -237,7 +252,7 @@ async def report_and_charts_pipeline(params: InputParams):
 register_pipeline(
     id="report_generation",
     description="Generate a report and charts from analysis data.",
-    tasks=[report_and_charts_pipeline],
+    tasks=[ping_llm_check, report_and_charts_pipeline],
     triggers=[
         # Trigger(
         #     id="hourly",

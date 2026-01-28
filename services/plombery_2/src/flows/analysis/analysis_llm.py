@@ -10,7 +10,7 @@ from plombery import task, get_logger, register_pipeline
 
 from ...utils._db import SessionLocal, Datasource
 from ...utils._tools import insert_datasource_analysis, exists_analysis_by_datasource_id
-from ...utils._ai import ask_llm
+from ...utils._ai import ask_llm, ping_llm
 
 
 PROMPT_PATH = "src/flows/analysis/prompt.txt"
@@ -26,6 +26,20 @@ class InputParams(BaseModel):
     prompt: str = Field(
         load_prompt(), alias="PROMPT", description="Prompt template for the LLM."
     )
+
+
+@task
+async def ping_llm_check():
+    """Check LLM connectivity before starting the analysis."""
+    logger = get_logger()
+    logger.info("Checking LLM connectivity...")
+    try:
+        response = await asyncio.to_thread(ping_llm)
+        logger.info(f"✓ LLM is available. Response: {response[:50]}...")
+        return response
+    except Exception as e:
+        logger.error(f"✗ LLM service check failed: {e}")
+        raise
 
 
 @task
@@ -193,6 +207,6 @@ async def trigger_report_generation():
 register_pipeline(
     id="datasource_analysis_llm",
     description="Analyze unanalyzed data sources using LLM and save results.",
-    tasks=[main, trigger_report_generation],
+    tasks=[ping_llm_check, main, trigger_report_generation],
     params=InputParams,
 )
