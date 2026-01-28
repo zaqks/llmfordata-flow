@@ -2,8 +2,11 @@
 # Processes all rows from datasource_analysis in batches, updating report and dashboard in memory, then writes to disk
 
 import gc
+import logging
 from string import Template
 from ....utils._ai import ask_llm
+
+logger = logging.getLogger(__name__)
 
 
 # Output file path
@@ -36,10 +39,13 @@ def generate_report(analysis_rows, prompt_markdown, batch_size):
     """Generate the markdown report using LLM in batches."""
     md_report = ""
     total_rows = len(analysis_rows)
-    print(f"Total rows to process for report: {total_rows}")
     num_batches = (total_rows + batch_size - 1) // batch_size
+    
+    logger.info(f"Starting report generation: {total_rows} rows in {num_batches} batch(es) (batch_size={batch_size})")
+    logger.info(f"Note: Each batch makes 1 LLM API call. With 10s delay, this will take ~{num_batches * 10}s")
+    
     for i, batch in enumerate(batch_iterable(analysis_rows, batch_size), 1):
-        print(f"Processing report batch {i}/{num_batches} (rows {((i-1)*batch_size)+1}-{min(i*batch_size, total_rows)})...")
+        logger.info(f"[Report Batch {i}/{num_batches}] Processing rows {((i-1)*batch_size)+1}-{min(i*batch_size, total_rows)}...")
         rows_md = rows_to_markdown(batch)
         report_prompt = prompt_markdown.substitute(current_report=md_report or "(empty)", rows=rows_md)
         
@@ -47,15 +53,17 @@ def generate_report(analysis_rows, prompt_markdown, batch_size):
         del rows_md
         
         try:
+            logger.info(f"[Report Batch {i}/{num_batches}] Calling LLM API (with 10s rate limit delay)...")
             md_report = ask_llm(report_prompt)
+            logger.info(f"[Report Batch {i}/{num_batches}] ✓ Successfully received LLM response")
         except Exception as e:
-            print(f"Error updating report with LLM: {e}")
+            logger.error(f"[Report Batch {i}/{num_batches}] Error updating report with LLM: {e}")
             continue
         finally:
             del report_prompt
             gc.collect()
-        
-        print(f"Finished report batch {i}/{num_batches}.")
+    
+    logger.info(f"Report generation complete: processed {num_batches} batch(es)")
 
     md_report = md_report.replace("```markdown\n", "")
     md_report = md_report.replace("\n```", "")
