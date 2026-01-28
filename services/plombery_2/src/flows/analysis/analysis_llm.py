@@ -1,12 +1,16 @@
 import json
+import os
+import gc
+import asyncio
 from string import Template
-from plombery import task, get_logger, Trigger, register_pipeline
+
+import httpx
+from pydantic import BaseModel, Field
+from plombery import task, get_logger, register_pipeline
 
 from ...utils._db import SessionLocal, Datasource
 from ...utils._tools import insert_datasource_analysis, exists_analysis_by_datasource_id
 from ...utils._ai import ask_llm
-import os
-from pydantic import BaseModel, Field
 
 
 PROMPT_PATH = "src/flows/analysis/prompt.txt"
@@ -26,22 +30,20 @@ class InputParams(BaseModel):
 
 @task
 async def main():
-    import asyncio
-    import gc
-
     logger = get_logger()
     prompt_template = Template(load_prompt())
 
     BATCH_SIZE = 10
-    CONCURRENCY = 1  # Changed to 1 to respect 8 req/min rate limit with 10s delay
+    CONCURRENCY = 1
     total_analyzed = 0
-    
-    logger.info(f"Starting analysis with CONCURRENCY={CONCURRENCY}, BATCH_SIZE={BATCH_SIZE}")
+
+    logger.info(
+        f"Starting analysis with CONCURRENCY={CONCURRENCY}, BATCH_SIZE={BATCH_SIZE}"
+    )
 
     while True:
         session = SessionLocal()
         try:
-            # Fetch a batch of unanalyzed datasources
             datasources = await asyncio.to_thread(
                 lambda: session.query(Datasource)
                 .filter(Datasource.analyzed == False)
@@ -53,9 +55,11 @@ async def main():
                 logger.info("No more datasources to analyze. Analysis complete.")
                 break
 
-            logger.info(f"Processing batch of {len(datasources)} datasources (IDs: {[ds.id for ds in datasources]})")
+            logger.info(
+                f"Processing batch of {len(datasources)} datasources "
+                f"(IDs: {[ds.id for ds in datasources]})"
+            )
 
-            # Extract data to avoid threading issues with SQLAlchemy objects
             ds_items = [(ds.id, ds.title, ds.abstract_or_summary) for ds in datasources]
 
             sem = asyncio.Semaphore(CONCURRENCY)
@@ -64,14 +68,15 @@ async def main():
                 ds_id, title, abstract = item
                 async with sem:
                     try:
-                        logger.info(f"Starting analysis for datasource {ds_id}: {title[:50]}...")
+                        logger.info(
+                            f"Starting analysis for datasource {ds_id}: {title[:50]}..."
+                        )
                         prompt = prompt_template.substitute(
                             title=title, abstract=abstract or ""
                         )
 
-                        # Run ask_llm in a thread
                         response = await asyncio.to_thread(ask_llm, prompt)
-                        logger.info(f"Received LLM response for datasource {ds_id}")
+
                         try:
                             result = json.loads(response)
                         except Exception as e:
@@ -90,28 +95,28 @@ async def main():
                             "summary": result.get("summary"),
                             "impact": result.get("impact"),
                         }
-                        return (ds_id, analysis_data)
+
+                        return ds_id, analysis_data
+
                     except Exception as e:
                         logger.error(f"Error processing datasource {ds_id}: {e}")
                         return None
 
-            results = await asyncio.gather(*(process_one(item) for item in ds_items))
+            results = await asyncio.gather(
+                *(process_one(item) for item in ds_items)
+            )
 
-            # Free items memory
             del ds_items
 
-            # Process results sequentially in session
             for res in results:
                 if not res:
                     continue
-                ds_id, analysis_data = res
 
-                # Find the datasource object by id
+                ds_id, analysis_data = res
                 ds = session.query(Datasource).filter(Datasource.id == ds_id).first()
                 if not ds:
                     continue
 
-                # Check if analysis already exists (using session)
                 if exists_analysis_by_datasource_id(ds_id, session=session):
                     logger.info(
                         f"Analysis already exists for datasource {ds_id}, skipping."
@@ -119,18 +124,19 @@ async def main():
                     ds.analyzed = True
                     continue
 
-                # Insert analysis (using session)
                 if insert_datasource_analysis(analysis_data, session=session):
                     ds.analyzed = True
                     total_analyzed += 1
-                    logger.info(f"✓ Successfully analyzed and saved datasource {ds_id} (total: {total_analyzed})")
+                    logger.info(
+                        f"✓ Successfully analyzed datasource {ds_id} "
+                        f"(total: {total_analyzed})"
+                    )
                 else:
-                    logger.warning(f"Analysis for datasource {ds_id} was not inserted.")
+                    logger.warning(
+                        f"Analysis for datasource {ds_id} was not inserted."
+                    )
 
-            # Free results memory
             del results
-
-            # Commit batch
             await asyncio.to_thread(session.commit)
 
         except Exception as e:
@@ -143,17 +149,13 @@ async def main():
     return {"analyzed": total_analyzed}
 
 
-import httpx
-
-
 @task
 async def trigger_report_generation():
-    # Trigger Report generation after analysis
     logger = get_logger()
-    
+
     max_retries = 3
     retry_delay = 60  # seconds
-    
+
     for attempt in range(max_retries):
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
@@ -164,35 +166,33 @@ async def trigger_report_generation():
                 response.raise_for_status()
 
             logger.info(f"Report generation triggered: {response.status_code}")
+
             try:
                 return response.json()
             except Exception:
-                logger.warning(f"Non-JSON response: {response.text}")
-                return {"status_code": response.status_code, "text": response.text}
+                return {
+                    "status_code": response.status_code,
+                    "text": response.text,
+                }
+
         except Exception as e:
             if attempt < max_retries - 1:
-                logger.warning(f"Trigger report attempt {attempt + 1} failed: {e}. Retrying in {retry_delay}s...")
+                logger.warning(
+                    f"Trigger report attempt {attempt + 1} failed: {e}. "
+                    f"Retrying in {retry_delay}s..."
+                )
                 await asyncio.sleep(retry_delay)
             else:
-                logger.error(f"Failed to trigger report generation after {max_retries} attempts: {e}")
+                logger.error(
+                    f"Failed to trigger report generation after "
+                    f"{max_retries} attempts: {e}"
+                )
                 return {"error": str(e)}
-            return {"status_code": response.status_code, "text": response.text}
-    except Exception as e:
-        logger.error(f"Failed to trigger Report generation: {e}")
-        return {"error": str(e)}
 
 
 register_pipeline(
     id="datasource_analysis_llm",
     description="Analyze unanalyzed data sources using LLM and save results.",
     tasks=[main, trigger_report_generation],
-    triggers=[
-        # Trigger(
-        #     id="manual",
-        #     name="Manual",
-        #     description="Run the analysis manually",
-        #     schedule=ManualTrigger(),
-        # ),
-    ],
     params=InputParams,
 )
