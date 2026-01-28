@@ -33,8 +33,10 @@ async def main():
     prompt_template = Template(load_prompt())
 
     BATCH_SIZE = 10
-    CONCURRENCY = 5
+    CONCURRENCY = 1  # Changed to 1 to respect 8 req/min rate limit with 10s delay
     total_analyzed = 0
+    
+    logger.info(f"Starting analysis with CONCURRENCY={CONCURRENCY}, BATCH_SIZE={BATCH_SIZE}")
 
     while True:
         session = SessionLocal()
@@ -48,9 +50,10 @@ async def main():
             )
 
             if not datasources:
+                logger.info("No more datasources to analyze. Analysis complete.")
                 break
 
-            logger.info(f"Processing batch of {len(datasources)} datasources.")
+            logger.info(f"Processing batch of {len(datasources)} datasources (IDs: {[ds.id for ds in datasources]})")
 
             # Extract data to avoid threading issues with SQLAlchemy objects
             ds_items = [(ds.id, ds.title, ds.abstract_or_summary) for ds in datasources]
@@ -61,12 +64,14 @@ async def main():
                 ds_id, title, abstract = item
                 async with sem:
                     try:
+                        logger.info(f"Starting analysis for datasource {ds_id}: {title[:50]}...")
                         prompt = prompt_template.substitute(
                             title=title, abstract=abstract or ""
                         )
 
                         # Run ask_llm in a thread
                         response = await asyncio.to_thread(ask_llm, prompt)
+                        logger.info(f"Received LLM response for datasource {ds_id}")
                         try:
                             result = json.loads(response)
                         except Exception as e:
@@ -118,9 +123,9 @@ async def main():
                 if insert_datasource_analysis(analysis_data, session=session):
                     ds.analyzed = True
                     total_analyzed += 1
-                    logger.info(f"Analyzed datasource {ds_id}")
+                    logger.info(f"✓ Successfully analyzed and saved datasource {ds_id} (total: {total_analyzed})")
                 else:
-                    logger.info(f"Analysis for datasource {ds_id} was not inserted.")
+                    logger.warning(f"Analysis for datasource {ds_id} was not inserted.")
 
             # Free results memory
             del results

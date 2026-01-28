@@ -8,7 +8,8 @@ client = OpenAI(
 
 
 def ask_llm(question):
-    # small delay to avoid rate bursts
+    # Delay to respect 8 req/min rate limit (7.5s between requests minimum)
+    # Using 10s to be safe with CONCURRENCY=1
     time.sleep(10)
 
     completion = client.chat.completions.create(
