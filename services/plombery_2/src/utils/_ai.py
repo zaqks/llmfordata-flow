@@ -1,4 +1,5 @@
 import os
+import time
 from openai import OpenAI
 
 client = OpenAI(
@@ -7,6 +8,9 @@ client = OpenAI(
 
 
 def ask_llm(question):
+    # small delay to avoid rate bursts
+    time.sleep(10)
+
     completion = client.chat.completions.create(
         extra_headers={
             "HTTP-Referer": "<YOUR_SITE_URL>",  # Optional. Site URL for rankings on openrouter.ai.
