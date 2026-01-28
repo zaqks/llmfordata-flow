@@ -45,14 +45,23 @@ async def send_report_notification():
         "url": "/executive",
     }
 
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.post(notification_endpoint, json=notification_data)
-            response.raise_for_status()
-            result = response.json()
-            return result
-    except Exception as e:
-        raise Exception(f"Failed to send notification: {e}")
+    max_retries = 3
+    retry_delay = 60  # seconds
+    
+    for attempt in range(max_retries):
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(notification_endpoint, json=notification_data)
+                response.raise_for_status()
+                result = response.json()
+                return result
+        except Exception as e:
+            if attempt < max_retries - 1:
+                logger = get_logger()
+                logger.warning(f"Notification attempt {attempt + 1} failed: {e}. Retrying in {retry_delay}s...")
+                await asyncio.sleep(retry_delay)
+            else:
+                raise Exception(f"Failed to send notification after {max_retries} attempts: {e}")
 
 
 class InputParams(BaseModel):

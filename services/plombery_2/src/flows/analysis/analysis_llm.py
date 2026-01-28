@@ -150,19 +150,32 @@ import httpx
 async def trigger_report_generation():
     # Trigger Report generation after analysis
     logger = get_logger()
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f'{os.getenv("HOST2")}/api/pipelines/report_generation/run',
-                json={"params": {}},
-                timeout=10,
-            )
-
-        logger.info(f"Report generation triggered: {response.status_code}")
+    
+    max_retries = 3
+    retry_delay = 60  # seconds
+    
+    for attempt in range(max_retries):
         try:
-            return response.json()
-        except Exception:
-            logger.warning(f"Non-JSON response: {response.text}")
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(
+                    f'{os.getenv("HOST2")}/api/pipelines/report_generation/run',
+                    json={"params": {}},
+                )
+                response.raise_for_status()
+
+            logger.info(f"Report generation triggered: {response.status_code}")
+            try:
+                return response.json()
+            except Exception:
+                logger.warning(f"Non-JSON response: {response.text}")
+                return {"status_code": response.status_code, "text": response.text}
+        except Exception as e:
+            if attempt < max_retries - 1:
+                logger.warning(f"Trigger report attempt {attempt + 1} failed: {e}. Retrying in {retry_delay}s...")
+                await asyncio.sleep(retry_delay)
+            else:
+                logger.error(f"Failed to trigger report generation after {max_retries} attempts: {e}")
+                return {"error": str(e)}
             return {"status_code": response.status_code, "text": response.text}
     except Exception as e:
         logger.error(f"Failed to trigger Report generation: {e}")
